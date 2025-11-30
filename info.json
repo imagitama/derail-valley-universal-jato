@@ -1,11 +1,11 @@
 {
 	"Id": "DerailValleyUniversalJato",
-	"Version": "0.0.1",
+	"Version": "1.0.0",
 	"DisplayName": "DerailValleyUniversalJato",
 	"Author": "Jared Williams",
 	"EntryMethod": "DerailValleyUniversalJato.Main.Load",
 	"ManagerVersion": "0.32.4",
 	"Repository": "https://raw.githubusercontent.com/imagitama/derail-valley-random-events/main/repository.json",
-	"Requirements": ["CommsRadioAPI"],
-	"LoadAfter": ["CommsRadioAPI"]
+	"Requirements": ["DerailValleyModToolbar"],
+	"LoadAfter": ["DerailValleyModToolbar"]
 }

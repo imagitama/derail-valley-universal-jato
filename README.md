@@ -10,6 +10,8 @@ A mod for the game [Derail Valley](https://store.steampowered.com/app/588030/Der
 
 Download the zip and use Unity Mod Manager to install it.
 
+**Depends on [DerailValleyModToolbar](https://github.com/imagitama/derail-valley-mod-toolbar)**
+
 ## How to use
 
 1. Press alt to open the in-game UI
@@ -17,8 +19,6 @@ Download the zip and use Unity Mod Manager to install it.
 3. Configure and add
 
 Default key is "LeftShift"
-
-I strongly recommend you add [DV Utilities](https://www.nexusmods.com/derailvalley/mods/631) to disable derailment!
 
 ## Known issues
 

@@ -3,13 +3,14 @@ using System.Reflection;
 using HarmonyLib;
 using UnityModManagerNet;
 using UnityEngine;
+using DerailValleyModToolbar;
 
 namespace DerailValleyUniversalJato;
 
 public static class Main
 {
     public static UnityModManager.ModEntry ModEntry;
-    public static Settings Settings;
+    public static Settings settings;
     private static GameObject _inGameWindow;
 
     private static bool Load(UnityModManager.ModEntry modEntry)
@@ -19,20 +20,26 @@ public static class Main
         Harmony? harmony = null;
         try
         {
-            Settings = Settings.Load<Settings>(modEntry);
-
-            if (Settings.LastJatoSettings != null)
-                InGameWindow.NewSettings = Settings.LastJatoSettings.Clone();
-
+            settings = Settings.Load<Settings>(modEntry);
             modEntry.OnGUI = OnGUI;
             modEntry.OnSaveGUI = OnSaveGUI;
+
+            if (settings.LastJatoSettings != null)
+                InGameWindow.NewSettings = settings.LastJatoSettings.Clone();
 
             harmony = new Harmony(modEntry.Info.Id);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
 
-            _inGameWindow = new GameObject("DerailValleyUniversalJato_CustomWindow");
-            var windowComp = _inGameWindow.AddComponent<InGameWindow>();
-            UnityEngine.Object.DontDestroyOnLoad(_inGameWindow);
+            ModToolbarAPI
+                .Register(modEntry)
+                .AddPanelControl(
+                    label: "Universal JATO",
+                    icon: "icon.png",
+                    tooltip: "Configure Universal JATO",
+                    type: typeof(InGameWindow),
+                    title: "Universal JATO",
+                    width: 400)
+                .Finish();
 
             ModEntry.Logger.Log("DerailValleyUniversalJato started");
         }
@@ -47,17 +54,14 @@ public static class Main
         return true;
     }
 
-    private static void OnGUI(UnityModManager.ModEntry modEntry)
+    static void OnGUI(UnityModManager.ModEntry modEntry)
     {
-        GUILayout.Label("Mod Settings", GUI.skin.label);
-
-        // GUILayout.Label("How often to check if we need to emit (in seconds):");
-        // Settings.CheckIntervalSeconds = float.Parse(GUILayout.TextField(Settings.CheckIntervalSeconds.ToString()));
+        settings.Draw(modEntry);
     }
 
-    private static void OnSaveGUI(UnityModManager.ModEntry modEntry)
+    static void OnSaveGUI(UnityModManager.ModEntry modEntry)
     {
-        Settings.Save(modEntry);
+        settings.Save(modEntry);
     }
 
     private static bool Unload(UnityModManager.ModEntry entry)

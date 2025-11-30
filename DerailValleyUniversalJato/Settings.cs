@@ -3,13 +3,17 @@ using UnityModManagerNet;
 
 namespace DerailValleyUniversalJato;
 
-public class Settings : UnityModManager.ModSettings
+public class Settings : UnityModManager.ModSettings, IDrawable
 {
     public JatoSettings? LastJatoSettings;
-    public bool ShowDebugStuff = false;
+    [Draw] public bool PreventDerail = false;
 
     public override void Save(UnityModManager.ModEntry modEntry)
     {
         Save(this, modEntry);
+    }
+
+    public void OnChange()
+    {
     }
 }

@@ -18,6 +18,7 @@
 		<Reference Include="DV.ThingTypes" />
 		<Reference Include="DV.LayeredAudio" />
 		<Reference Include="DV.NAudio" />
+		<Reference Include="DerailValleyModToolbar" />
 	</ItemGroup>
 
 	<!-- Unity -->

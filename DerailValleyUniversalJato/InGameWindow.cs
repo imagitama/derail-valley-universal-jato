@@ -1,10 +1,12 @@
 using System;
 using UnityEngine;
 using UnityModManagerNet;
+using DerailValleyModToolbar;
+using DV;
 
 namespace DerailValleyUniversalJato;
 
-public class InGameWindow : MonoBehaviour
+public class InGameWindow : MonoBehaviour, IModToolbarPanel
 {
     private UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
     private bool showGui = false;
@@ -24,37 +26,6 @@ public class InGameWindow : MonoBehaviour
     private string _scaleText = NewSettings.Scale.ToString();
     private string _volumeText = NewSettings.SoundVolume.ToString();
     private int? _selectedComponentIndex = null;
-
-    public void Show()
-    {
-
-    }
-
-    void OnGUI()
-    {
-        if (PlayerManager.PlayerTransform == null)
-        {
-            showGui = false;
-            return;
-        }
-
-        if (!VRManager.IsVREnabled() && ScreenspaceMouse.Instance && !ScreenspaceMouse.Instance.on) return;
-
-        if (GUI.Button(buttonRect, "UJ", new GUIStyle(GUI.skin.button) { fontSize = 16, clipping = TextClipping.Overflow })) showGui = !showGui;
-
-        if (showGui)
-        {
-            float scale = 1.5f;
-            Vector2 pivot = Vector2.zero; // top-left corner
-
-            Matrix4x4 oldMatrix = GUI.matrix;
-            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
-
-            windowRect = GUILayout.Window(700, windowRect, Window, "JATO");
-
-            GUI.matrix = oldMatrix;
-        }
-    }
 
     (Transform transform, Rigidbody Rigidbody, TrainCar trainCar)? GetJatoTargetInfo()
     {
@@ -134,11 +105,32 @@ public class InGameWindow : MonoBehaviour
         trainCar.StopMovement();
     }
 
-    void Window(int windowId)
+    void DerailTrain()
     {
-        scrollPosition = GUILayout.BeginScrollView(scrollPosition, GUILayout.Width(270 + GUI.skin.verticalScrollbar.fixedWidth), GUILayout.Height(scrollRect.height + GUI.skin.box.margin.vertical), GUILayout.MaxHeight(Screen.height - 130));
-        GUILayout.BeginVertical();
+        var target = GetJatoTargetInfo();
 
+        if (target == null)
+            return;
+
+        var (transform, rigidbody, trainCar) = target.Value;
+
+        Logger.Log("Derail train");
+
+        trainCar.Derail();
+    }
+
+    private void EnableNoDerail()
+    {
+        Globals.G.GameParams.DerailStressThreshold = float.PositiveInfinity;
+    }
+
+    private void DisableNoDerail()
+    {
+        Globals.G.GameParams.DerailStressThreshold = Globals.G.GameParams.defaultStressThreshold;
+    }
+
+    public void Window(Rect rect)
+    {
         var target = GetJatoTargetInfo();
 
         GUILayout.Label($"Target: {(target != null ? $"{target.Value.trainCar.carType} {target.Value.trainCar.carLivery.id}" : "(none)")}");
@@ -150,7 +142,7 @@ public class InGameWindow : MonoBehaviour
         {
             NewSettings.KeyCode = keyCodeResult;
         }
-        GUILayout.Label($"(any Unity keycode eg. 'LeftShift', 'E', 'Enter', 'F12')");
+        GUILayout.Label($"(any Unity keycode eg. 'LeftShift', 'E', 'Enter', 'F12', 'UpArrow')");
 
         GUILayout.Label($"Thrust:");
         _thrustText = GUILayout.TextField(_thrustText);
@@ -170,6 +162,7 @@ public class InGameWindow : MonoBehaviour
             }
         }
 
+        GUILayout.BeginHorizontal();
         GUILayout.Label($"Position:");
 
         _positionXText = GUILayout.TextField(_positionXText, GUILayout.Width(40f));
@@ -189,7 +182,9 @@ public class InGameWindow : MonoBehaviour
         {
             NewSettings.PositionZ = positionZResult;
         }
+        GUILayout.EndHorizontal();
 
+        GUILayout.BeginHorizontal();
         GUILayout.Label($"Rotation:");
 
         _rotationXText = GUILayout.TextField(_rotationXText, GUILayout.Width(40f));
@@ -209,6 +204,7 @@ public class InGameWindow : MonoBehaviour
         {
             NewSettings.RotationZ = rotationZResult;
         }
+        GUILayout.EndHorizontal();
 
         GUILayout.Label($"Scale:");
 
@@ -221,8 +217,8 @@ public class InGameWindow : MonoBehaviour
         NewSettings.ForceOn = GUILayout.Toggle(NewSettings.ForceOn, "Force on");
         NewSettings.RequireSittingInside = GUILayout.Toggle(NewSettings.RequireSittingInside, "Must sit inside to use");
 
-        GUILayout.Label($"Volume (percent):");
-        _volumeText = GUILayout.TextField(_volumeText);
+        GUILayout.Label($"Volume (eg. 0.5 for 50%):");
+        _volumeText = GUILayout.TextField(_volumeText, GUILayout.Width(50f));
         if (float.TryParse(_rotationZText, out float volumeResult))
         {
             NewSettings.SoundVolume = volumeResult;
@@ -289,20 +285,26 @@ public class InGameWindow : MonoBehaviour
 
         GUILayout.Label($"");
 
+        Main.settings.PreventDerail = GUILayout.Toggle(Main.settings.PreventDerail, "Prevent derail");
+
+        if (Main.settings.PreventDerail)
+            EnableNoDerail();
+        else
+            DisableNoDerail();
+
+        GUILayout.Label($"");
+
         if (GUILayout.Button("Stop Train Moving"))
         {
             StopTrainMoving();
         }
-        if (GUILayout.Button("Save Settings"))
+        if (GUILayout.Button("Derail Train"))
         {
-            Main.Settings.LastJatoSettings = NewSettings.Clone();
+            DerailTrain();
         }
-
-        GUILayout.EndVertical();
-        if (Event.current.type == EventType.Repaint)
+        if (GUILayout.Button("Sync Into Settings"))
         {
-            scrollRect = GUILayoutUtility.GetLastRect();
+            Main.settings.LastJatoSettings = NewSettings.Clone();
         }
-        GUILayout.EndScrollView();
     }
 }
