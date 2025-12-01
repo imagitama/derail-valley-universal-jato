@@ -7,7 +7,7 @@ using DV.ThingTypes;
 
 namespace DerailValleyUniversalJato;
 
-public class InGameWindow : MonoBehaviour, IModToolbarPanel
+public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
 {
     private UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
     public static JatoSettings NewSettings = new JatoSettings();
@@ -137,6 +137,8 @@ public class InGameWindow : MonoBehaviour, IModToolbarPanel
         {
             foreach (var comp in comps)
                 comp.DebugText = null;
+
+            return;
         }
 
         var compsOnTarget = JatoManager.GetJatos(target!.Value.transform);
@@ -214,7 +216,6 @@ public class InGameWindow : MonoBehaviour, IModToolbarPanel
         }
         else
         {
-
             _selectedComponentIndex = null;
         }
 

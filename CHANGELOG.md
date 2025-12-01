@@ -1,3 +1,8 @@
+# 1.1.1
+
+- fixed panel glitching when not in a train
+- rename components
+
 # 1.1.0
 
 - new rocket!

@@ -46,7 +46,7 @@ public class JatoSettings
 public static class JatoManager
 {
     private static UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
-    public static List<UniversalJatoComponent> allJatos = [];
+    public static List<UniversalJato> allJatos = [];
 
     private static AssetBundle LoadBundle(string pathInsideAssetBundles)
     {
@@ -117,7 +117,7 @@ public static class JatoManager
 
         ApplyOffsetsToRocket(newObj.transform, settingsToApply);
 
-        var component = newObj.gameObject.AddComponent<UniversalJatoComponent>();
+        var component = newObj.gameObject.AddComponent<UniversalJato>();
         component.trainCar = trainCar;
         component.settings = settingsToApply;
         component.trainRigidbody = rigidbody;
@@ -198,8 +198,8 @@ public static class JatoManager
         Logger.Log("All removed");
     }
 
-    public static UniversalJatoComponent[] GetJatos(Transform target)
+    public static UniversalJato[] GetJatos(Transform target)
     {
-        return target.GetComponentsInChildren<UniversalJatoComponent>();
+        return target.GetComponentsInChildren<UniversalJato>();
     }
 }

@@ -1,12 +1,9 @@
-using System;
-using System.Collections.Generic;
-using DV.Utils;
 using UnityEngine;
 using UnityModManagerNet;
 
 namespace DerailValleyUniversalJato;
 
-public class UniversalJatoComponent : MonoBehaviour
+public class UniversalJato : MonoBehaviour
 {
     private static UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
     public TrainCar trainCar;
@@ -24,7 +21,7 @@ public class UniversalJatoComponent : MonoBehaviour
 
     void Start()
     {
-        Logger.Log("UniversalJatoComponent.Start");
+        Logger.Log("UniversalJato.Start");
         alwaysStuff = transform.Find("Always");
         offStuff = transform.Find("Off");
         onStuff = transform.Find("On");

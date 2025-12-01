@@ -24,7 +24,7 @@ public static class Main
             modEntry.OnSaveGUI = OnSaveGUI;
 
             if (settings.LastJatoSettings != null)
-                InGameWindow.NewSettings = settings.LastJatoSettings.Clone();
+                UniversalJatoPanel.NewSettings = settings.LastJatoSettings.Clone();
 
             harmony = new Harmony(modEntry.Info.Id);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
@@ -35,7 +35,7 @@ public static class Main
                     label: "Universal JATO",
                     icon: "icon.png",
                     tooltip: "Configure Universal JATO",
-                    type: typeof(InGameWindow),
+                    type: typeof(UniversalJatoPanel),
                     title: "Universal JATO",
                     width: 400)
                 .Finish();
