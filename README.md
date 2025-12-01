@@ -4,8 +4,6 @@ A mod for the game [Derail Valley](https://store.steampowered.com/app/588030/Der
 
 ![](./screenshot.png)
 
-![](./window.png)
-
 ## Install
 
 Download the zip and use Unity Mod Manager to install it.

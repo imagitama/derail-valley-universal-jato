@@ -1,5 +1,6 @@
 # 1.1.0
 
+- new rocket!
 - added key record button
 - added auto-position button
 - remove all JATOs on unload
