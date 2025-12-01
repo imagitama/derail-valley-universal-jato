@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityModManagerNet;
@@ -17,9 +18,10 @@ public class JatoSettings
     public float RotationX = 0;
     public float RotationY = 0;
     public float RotationZ = 0;
-    public float SoundVolume = 0.5f;
+    public float SoundVolume = 1f;
     public bool RequireSittingInside = true;
     public float Scale = 1f;
+    public bool HideBody = false;
     public JatoSettings Clone()
     {
         return new JatoSettings()
@@ -35,7 +37,8 @@ public class JatoSettings
             RotationZ = RotationZ,
             SoundVolume = SoundVolume,
             RequireSittingInside = RequireSittingInside,
-            Scale = Scale
+            Scale = Scale,
+            HideBody = HideBody
         };
     }
 }
@@ -43,6 +46,7 @@ public class JatoSettings
 public static class JatoManager
 {
     private static UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
+    public static List<UniversalJatoComponent> allJatos = [];
 
     private static AssetBundle LoadBundle(string pathInsideAssetBundles)
     {
@@ -78,7 +82,7 @@ public static class JatoManager
 
     public static int GetJatoCount(Transform target)
     {
-        return target.GetComponentsInChildren<UniversalJatoComponent>().Length;
+        return GetJatos(target).Length;
     }
 
     public static bool GetDoesTargetHaveJato(Transform target)
@@ -98,7 +102,7 @@ public static class JatoManager
 
     public static void AddJato(Transform target, TrainCar trainCar, Rigidbody rigidbody, JatoSettings newSettings)
     {
-        var existingComponents = target.GetComponentsInChildren<UniversalJatoComponent>();
+        var existingComponents = GetJatos(target);
 
         if (existingComponents.Length > 0)
         {
@@ -114,16 +118,18 @@ public static class JatoManager
         ApplyOffsetsToRocket(newObj.transform, settingsToApply);
 
         var component = newObj.gameObject.AddComponent<UniversalJatoComponent>();
-        component.TrainCar = trainCar;
-        component.Settings = settingsToApply;
-        component.TrainRigidbody = rigidbody;
+        component.trainCar = trainCar;
+        component.settings = settingsToApply;
+        component.trainRigidbody = rigidbody;
+
+        allJatos.Add(component);
 
         Logger.Log($"Added JATO as object {newObj} (with component {component}) to {target} (rigidbody {rigidbody})");
     }
 
     public static void UpdateJato(Transform target, JatoSettings newSettings, int? componentIndex = null, bool applyOffsets = true)
     {
-        var components = target.GetComponentsInChildren<UniversalJatoComponent>();
+        var components = GetJatos(target);
 
         if (components.Length == 0)
         {
@@ -141,7 +147,7 @@ public static class JatoManager
 
         foreach (var component in components)
         {
-            component.Settings = settingsToApply;
+            component.settings = settingsToApply;
 
             if (applyOffsets == true)
                 ApplyOffsetsToRocket(component.transform, settingsToApply);
@@ -152,7 +158,7 @@ public static class JatoManager
 
     public static void RemoveJato(Transform target, int? componentIndex = null)
     {
-        var components = target.GetComponentsInChildren<UniversalJatoComponent>();
+        var components = GetJatos(target);
 
         if (components.Length == 0)
         {
@@ -169,8 +175,31 @@ public static class JatoManager
         var count = components.Length;
 
         foreach (var component in components)
+        {
+            allJatos.Remove(component);
+
             GameObject.Destroy(component.gameObject);
+        }
 
         Logger.Log($"Removed {count} JATO components from {target} (index={componentIndex})");
+    }
+
+    public static void RemoveAllJatos()
+    {
+        Logger.Log($"Removing all JATOs ({allJatos.Count})...");
+
+        foreach (var component in allJatos)
+        {
+            allJatos.Remove(component);
+
+            GameObject.Destroy(component.gameObject);
+        }
+
+        Logger.Log("All removed");
+    }
+
+    public static UniversalJatoComponent[] GetJatos(Transform target)
+    {
+        return target.GetComponentsInChildren<UniversalJatoComponent>();
     }
 }

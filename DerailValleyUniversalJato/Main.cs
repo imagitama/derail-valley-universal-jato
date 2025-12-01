@@ -11,7 +11,6 @@ public static class Main
 {
     public static UnityModManager.ModEntry ModEntry;
     public static Settings settings;
-    private static GameObject _inGameWindow;
 
     private static bool Load(UnityModManager.ModEntry modEntry)
     {
@@ -64,10 +63,11 @@ public static class Main
         settings.Save(modEntry);
     }
 
-    private static bool Unload(UnityModManager.ModEntry entry)
+    private static bool Unload(UnityModManager.ModEntry modEntry)
     {
-        if (_inGameWindow != null)
-            GameObject.Destroy(_inGameWindow);
+        ModToolbarAPI.Unregister(modEntry);
+
+        JatoManager.RemoveAllJatos();
 
         ModEntry.Logger.Log("DerailValleyUniversalJato stopped");
         return true;

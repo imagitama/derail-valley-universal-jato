@@ -1,3 +1,12 @@
+# 1.1.0
+
+- added key record button
+- added auto-position button
+- remove all JATOs on unload
+- added selected rocket label
+- fixed particle system switching off incorrectly
+- fixed sound
+
 # 1.0.0
 
 - added dependency on `DerailValleyModToolbar`

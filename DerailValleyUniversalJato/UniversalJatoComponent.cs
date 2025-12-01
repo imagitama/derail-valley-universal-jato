@@ -9,114 +9,165 @@ namespace DerailValleyUniversalJato;
 public class UniversalJatoComponent : MonoBehaviour
 {
     private static UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
-    public TrainCar TrainCar;
-    public Rigidbody TrainRigidbody;
-    public JatoSettings Settings;
-    public Transform OffStuff;
-    public Transform OnStuff;
-    // public AudioSource[] audioSources;
-    // public Dictionary<Transform, LayeredAudio> LayeredAudios;
-    public Dictionary<Vector3, AudioClip> AudioClips = [];
+    public TrainCar trainCar;
+    public Rigidbody trainRigidbody;
+    public JatoSettings settings;
+    public Transform? alwaysStuff;
+    public Transform? offStuff;
+    public Transform? onStuff;
+    public Transform? keepAliveStuff;
+    public AudioSource[] audioSources = [];
+    public ParticleSystem[] onParticleSystems = [];
     public bool IsOn = false;
-    // public AudioManager AudioManager;
+    public string? DebugText;
+    private UniversalJatoDebugText? _debugText;
 
     void Start()
     {
         Logger.Log("UniversalJatoComponent.Start");
-        OffStuff = transform.Find("Off");
-        OnStuff = transform.Find("On");
+        alwaysStuff = transform.Find("Always");
+        offStuff = transform.Find("Off");
+        onStuff = transform.Find("On");
 
-        // AudioManager = SingletonBehaviour<AudioManager>.Instance;
+        if (alwaysStuff == null)
+            Logger.Log("No 'always' stuff found");
+        if (offStuff == null)
+            Logger.Log("No 'off' stuff found");
+        if (onStuff == null)
+            Logger.Log("No 'on' stuff found");
 
-        if (OffStuff == null)
-            throw new Exception("No 'off' stuff");
-        if (OnStuff == null)
-            throw new Exception("No 'on' stuff");
-
-        var audioSources = GetComponentsInChildren<AudioSource>();
+        audioSources = GetComponentsInChildren<AudioSource>();
 
         Logger.Log($"Found {audioSources.Length} audio sources");
 
-        foreach (var audioSource in audioSources)
-        {
-            var transform = audioSource.transform;
+        onParticleSystems = onStuff?.GetComponentsInChildren<ParticleSystem>() ?? [];
 
-            // var layeredAudio = AudioHelper.ConvertAudioSourceToLayeredAudio(audioSource);
-            // LayeredAudios[transform] = layeredAudio;
+        Logger.Log($"Found {onParticleSystems.Length} particle systems");
 
-            AudioClips[transform.position] = audioSource.clip;
+        SetupPaticleSystems();
 
-            GameObject.Destroy(audioSource);
-        }
-
-        OnStuff.gameObject.SetActive(false);
+        onStuff?.gameObject.SetActive(false);
     }
 
-    private bool GetIsSittingInside()
+    void SetupPaticleSystems()
     {
-        if (TrainCar == null)
-            throw new Exception("Need a train car");
+        var newObj = new GameObject("KeepAlive");
+        newObj.transform.parent = this.transform;
+        keepAliveStuff = newObj.transform;
 
-        return PlayerManager.Car == TrainCar;
+        foreach (var particleSystem in onParticleSystems)
+        {
+            particleSystem.transform.parent = keepAliveStuff;
+            particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+    }
+
+    private bool? GetIsSittingInside()
+    {
+        if (trainCar == null)
+            return null;
+
+        return PlayerManager.Car == trainCar;
     }
 
     void Update()
     {
         var originallyIsOn = IsOn;
 
-        if (Settings == null)
+        if (settings == null)
         {
-            Logger.Log($"Waiting for required data Settings={Settings}");
+            Logger.Log($"Waiting for required data settings={settings}");
             return;
         }
 
-        if (Input.GetKey(Settings.KeyCode) && (Settings.RequireSittingInside == false || GetIsSittingInside()))
+        alwaysStuff?.gameObject.SetActive(!settings.HideBody);
+
+        if (Input.GetKey(settings.KeyCode))
         {
-            IsOn = true;
+            if (settings.RequireSittingInside && GetIsSittingInside() != true)
+            {
+                // ignore
+            }
+            else
+            {
+                IsOn = true;
+            }
         }
         else
         {
             IsOn = false;
         }
 
-        if (Settings.ForceOn)
+        if (settings.ForceOn)
             IsOn = true;
 
         if (IsOn != originallyIsOn)
             Logger.Log("Boost!");
 
-        OffStuff.gameObject.SetActive(IsOn!);
-        OnStuff.gameObject.SetActive(IsOn);
+        offStuff?.gameObject.SetActive(IsOn!);
+        onStuff?.gameObject.SetActive(IsOn);
 
         if (IsOn)
         {
             ApplyBoosterForce();
+            SetAudioVolume();
+
+            if (IsOn != originallyIsOn)
+                StartParticleSystems();
+        }
+        else
+        {
+            if (IsOn != originallyIsOn)
+                StopParticleSystems();
         }
 
-        if (IsOn && IsOn != originallyIsOn)
-        {
-            PlayAudio();
-        }
+        DrawDebug();
     }
 
-    void PlayAudio()
+    void StartParticleSystems()
     {
-        foreach (var item in AudioClips)
+        // do this to let particles keep playing so less abrupt
+        foreach (var particleSystem in onParticleSystems)
+            particleSystem.Play();
+    }
+
+    void StopParticleSystems()
+    {
+        foreach (var particleSystem in onParticleSystems)
+            particleSystem.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+    }
+
+    void SetAudioVolume()
+    {
+        foreach (var audio in audioSources)
+            audio.volume = settings.SoundVolume;
+    }
+
+    void DrawDebug()
+    {
+        if (DebugText != null)
         {
-            var position = item.Key;
-            var audioClip = item.Value;
+            if (_debugText == null)
+            {
+                var newObj = new GameObject("Debug");
+                newObj.transform.SetParent(this.transform, false);
+                newObj.transform.localPosition = new Vector3(0, -0.5f, 0);
+                newObj.transform.localScale = Vector3.one * 0.5f;
+                newObj.transform.localRotation = Quaternion.identity;
+                _debugText = newObj.AddComponent<UniversalJatoDebugText>();
+            }
 
-            if (audioClip == null)
-                throw new Exception($"Audio clip from transform '{transform}' is null");
-
-            // TODO: get this working
-            audioClip.Play(TrainCar.transform.position, minDistance: 10f, parent: TrainCar.transform, volume: Settings.SoundVolume);
+            _debugText.Text = DebugText;
+        }
+        else if (_debugText != null)
+        {
+            GameObject.Destroy(_debugText.gameObject);
         }
     }
 
     void ApplyBoosterForce()
     {
-        if (TrainRigidbody == null)
+        if (trainRigidbody == null)
         {
             Logger.Log("Waiting for rigidbody");
             return;
@@ -124,8 +175,8 @@ public class UniversalJatoComponent : MonoBehaviour
 
         Vector3 thrustDir = transform.TransformDirection(Vector3.back);
 
-        Vector3 force = thrustDir * Settings.Thrust;
+        Vector3 force = thrustDir * settings.Thrust;
 
-        TrainRigidbody.AddForceAtPosition(force, transform.position, ForceMode.Force);
+        trainRigidbody.AddForceAtPosition(force, transform.position, ForceMode.Force);
     }
 }
