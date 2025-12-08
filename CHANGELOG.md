@@ -1,3 +1,7 @@
+# 1.2.1
+
+- fixed disable derail on game start
+
 # 1.2.0
 
 - overhauled UI
