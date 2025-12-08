@@ -12,6 +12,11 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     public override void Save(UnityModManager.ModEntry modEntry)
     {
         Save(this, modEntry);
+
+        if (PreventDerail)
+            TrainCarHelper.EnableNoDerail();
+        else
+            TrainCarHelper.DisableNoDerail();
     }
 
     public void OnChange()

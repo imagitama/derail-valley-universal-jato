@@ -57,6 +57,11 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
     {
         Logger.Log("[Panel] Start");
         PlayerManager.CarChanged += OnCarChanged;
+
+        if (Main.settings.PreventDerail)
+            TrainCarHelper.EnableNoDerail();
+        else
+            TrainCarHelper.DisableNoDerail();
     }
 
     void OnDestroy()
@@ -136,18 +141,6 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
             return;
 
         target.Value.trainCar.Derail();
-    }
-
-    private void EnableNoDerail()
-    {
-        Logger.Log($"[Panel] Enable no-derail");
-        Globals.G.GameParams.DerailStressThreshold = float.PositiveInfinity;
-    }
-
-    private void DisableNoDerail()
-    {
-        Logger.Log($"[Panel] Disable no-derail");
-        Globals.G.GameParams.DerailStressThreshold = Globals.G.GameParams.defaultStressThreshold;
     }
 
     private void UpdateDebugTexts()
@@ -681,12 +674,6 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         {
             Main.settings.PreventDerail = newPreventDerail;
             Main.settings.Save(Main.ModEntry);
-
-            // TODO: move to something else that subscribes to this
-            if (Main.settings.PreventDerail)
-                EnableNoDerail();
-            else
-                DisableNoDerail();
         }
 
         GUI.enabled = target != null;
