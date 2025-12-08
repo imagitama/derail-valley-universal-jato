@@ -1,7 +1,10 @@
+# 1.2.2
+
+- fixed crash on some train cars
+
 # 1.2.1
 
 - fixed disable derail on game start
-- fixed crash on some train cars
 
 # 1.2.0
 
