@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using DV.Utils;
 using UnityEngine;
 using UnityModManagerNet;
 
@@ -46,7 +48,7 @@ public class JatoSettings
 public static class JatoManager
 {
     private static UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
-    public static List<UniversalJato> allJatos = [];
+    private static AssetBundle? _rocketAssetBundle;
 
     private static AssetBundle LoadBundle(string pathInsideAssetBundles)
     {
@@ -67,9 +69,9 @@ public static class JatoManager
         if (RocketPrefab != null)
             return RocketPrefab;
 
-        var bundle = LoadBundle("rocket");
+        _rocketAssetBundle = LoadBundle("rocket");
 
-        var all = bundle.LoadAllAssets<GameObject>();
+        var all = _rocketAssetBundle.LoadAllAssets<GameObject>();
 
         var newPrefab = all[0];
 
@@ -82,7 +84,7 @@ public static class JatoManager
 
     public static int GetJatoCount(Transform target)
     {
-        return GetJatos(target).Length;
+        return GetJatos(target).Count;
     }
 
     public static bool GetDoesTargetHaveJato(Transform target)
@@ -100,11 +102,11 @@ public static class JatoManager
         target.localScale = new Vector3(newSettings.Scale, newSettings.Scale, newSettings.Scale);
     }
 
-    public static void AddJato(Transform target, TrainCar trainCar, Rigidbody rigidbody, JatoSettings newSettings)
+    public static UniversalJato AddJato(Transform target, TrainCar trainCar, Rigidbody rigidbody, JatoSettings newSettings)
     {
         var existingComponents = GetJatos(target);
 
-        if (existingComponents.Length > 0)
+        if (existingComponents.Count > 0)
         {
             Logger.Log("Warning - JATO already exists (adding anyway)");
         }
@@ -122,16 +124,16 @@ public static class JatoManager
         component.settings = settingsToApply;
         component.trainRigidbody = rigidbody;
 
-        allJatos.Add(component);
-
         Logger.Log($"Added JATO as object {newObj} (with component {component}) to {target} (rigidbody {rigidbody})");
+
+        return component;
     }
 
-    public static void UpdateJato(Transform target, JatoSettings newSettings, int? componentIndex = null, bool applyOffsets = true)
+    public static void UpdateJato(Transform target, JatoSettings newSettings, int? componentIndex = null)
     {
         var components = GetJatos(target);
 
-        if (components.Length == 0)
+        if (components.Count == 0)
         {
             Logger.Log("Cannot update JATO - No components");
             return;
@@ -148,19 +150,24 @@ public static class JatoManager
         foreach (var component in components)
         {
             component.settings = settingsToApply;
-
-            if (applyOffsets == true)
-                ApplyOffsetsToRocket(component.transform, settingsToApply);
         }
 
-        Logger.Log($"Updated JATO {components.Length} components on {target} (index={componentIndex})");
+        ApplyOffsetsToRocket(target, settingsToApply);
+    }
+    public static void UpdateJato(UniversalJato component, JatoSettings newSettings)
+    {
+        var settingsToApply = newSettings.Clone();
+
+        component.settings = settingsToApply;
+
+        ApplyOffsetsToRocket(component.transform, settingsToApply);
     }
 
     public static void RemoveJato(Transform target, int? componentIndex = null)
     {
         var components = GetJatos(target);
 
-        if (components.Length == 0)
+        if (components.Count == 0)
         {
             Logger.Log("Cannot remove JATO - No components");
             return;
@@ -172,34 +179,57 @@ public static class JatoManager
             components = [component];
         }
 
-        var count = components.Length;
+        var count = components.Count;
 
         foreach (var component in components)
-        {
-            allJatos.Remove(component);
-
             GameObject.Destroy(component.gameObject);
-        }
 
         Logger.Log($"Removed {count} JATO components from {target} (index={componentIndex})");
     }
 
-    public static void RemoveAllJatos()
+    public static List<UniversalJato> GetAllJatos()
     {
+        var jatos = SingletonBehaviour<CarSpawner>.Instance.AllCars
+            .SelectMany(x => x.GetComponentsInChildren<UniversalJato>())
+            .ToList();
+
+        return jatos;
+    }
+
+    public static void RemoveAllJatos(Transform? target = null)
+    {
+        if (target != null)
+        {
+            RemoveJato(target);
+            return;
+        }
+
+        var allJatos = GetAllJatos();
+
         Logger.Log($"Removing all JATOs ({allJatos.Count})...");
 
-        foreach (var component in allJatos)
-        {
-            allJatos.Remove(component);
+        // fix InvalidOperationException
+        var jatosToRemove = allJatos.ToList();
 
-            GameObject.Destroy(component.gameObject);
+        foreach (var jatoComponent in jatosToRemove)
+        {
+            allJatos.Remove(jatoComponent);
+
+            GameObject.Destroy(jatoComponent.gameObject);
         }
 
         Logger.Log("All removed");
     }
 
-    public static UniversalJato[] GetJatos(Transform target)
+    public static List<UniversalJato> GetJatos(Transform target)
     {
-        return target.GetComponentsInChildren<UniversalJato>();
+        return target.GetComponentsInChildren<UniversalJato>().ToList();
+    }
+
+    public static void Unload()
+    {
+        Logger.Log("Unload manager");
+        RemoveAllJatos();
+        _rocketAssetBundle?.Unload(unloadAllLoadedObjects: true);
     }
 }

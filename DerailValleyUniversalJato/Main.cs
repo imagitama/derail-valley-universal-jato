@@ -7,6 +7,9 @@ using DerailValleyModToolbar;
 
 namespace DerailValleyUniversalJato;
 
+#if DEBUG
+[EnableReloading]
+#endif
 public static class Main
 {
     public static UnityModManager.ModEntry ModEntry;
@@ -22,9 +25,6 @@ public static class Main
             settings = Settings.Load<Settings>(modEntry);
             modEntry.OnGUI = OnGUI;
             modEntry.OnSaveGUI = OnSaveGUI;
-
-            if (settings.LastJatoSettings != null)
-                UniversalJatoPanel.NewSettings = settings.LastJatoSettings.Clone();
 
             harmony = new Harmony(modEntry.Info.Id);
             harmony.PatchAll(Assembly.GetExecutingAssembly());
@@ -67,7 +67,7 @@ public static class Main
     {
         ModToolbarAPI.Unregister(modEntry);
 
-        JatoManager.RemoveAllJatos();
+        JatoManager.Unload();
 
         ModEntry.Logger.Log("DerailValleyUniversalJato stopped");
         return true;

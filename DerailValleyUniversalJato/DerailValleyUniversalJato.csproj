@@ -19,7 +19,11 @@
 		<Reference Include="DV.LayeredAudio" />
 		<Reference Include="DV.NAudio" />
 		<Reference Include="DV.RailTrack" />
-		<Reference Include="DerailValleyModToolbar" />
+		<Reference Include="DV.PointSet" />
+		<Reference Include="DV.CharacterController" />
+		<Reference Include="DV.BrakeSystem" />
+		<Reference Include="net.smkd.vector3d" />
+		<Reference Include="WorldStreamer" />
 	</ItemGroup>
 
 	<!-- Unity -->
@@ -40,6 +44,7 @@
 	<!-- Mod Loader -->
 	<ItemGroup>
 		<PackageReference Include="UnityModManager" Version="0.27.2" />
+		<Reference Include="DerailValleyModToolbar" />
 	</ItemGroup>
 
 	<!-- Null Checking -->

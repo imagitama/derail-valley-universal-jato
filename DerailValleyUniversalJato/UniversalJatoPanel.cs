@@ -4,25 +4,74 @@ using UnityModManagerNet;
 using DerailValleyModToolbar;
 using DV;
 using DV.ThingTypes;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace DerailValleyUniversalJato;
+
+public class JatoSettingsText
+{
+    public string Thrust = "";
+    public string PositionX = "";
+    public string PositionY = "";
+    public string PositionZ = "";
+    public string RotationX = "";
+    public string RotationY = "";
+    public string RotationZ = "";
+    public string SoundVolume = "";
+    public string Scale = "";
+    public JatoSettingsText(JatoSettings inputSettings)
+    {
+        Thrust = inputSettings.Thrust.ToString();
+        PositionX = inputSettings.PositionX.ToString();
+        PositionY = inputSettings.PositionY.ToString();
+        PositionZ = inputSettings.PositionZ.ToString();
+        RotationX = inputSettings.RotationX.ToString();
+        RotationY = inputSettings.RotationY.ToString();
+        RotationZ = inputSettings.RotationZ.ToString();
+        SoundVolume = inputSettings.SoundVolume.ToString();
+        Scale = inputSettings.Scale.ToString();
+    }
+}
 
 public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
 {
     private UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
-    public static JatoSettings NewSettings = new JatoSettings();
-    private string _keyCodeText = NewSettings.KeyCode.ToString();
-    private string _thrustText = NewSettings.Thrust.ToString();
-    private string _positionXText = NewSettings.PositionX.ToString();
-    private string _positionYText = NewSettings.PositionY.ToString();
-    private string _positionZText = NewSettings.PositionZ.ToString();
-    private string _rotationXText = NewSettings.RotationX.ToString();
-    private string _rotationYText = NewSettings.RotationY.ToString();
-    private string _rotationZText = NewSettings.RotationZ.ToString();
-    private string _scaleText = NewSettings.Scale.ToString();
+    private JatoSettings? _settingsEditingDraft = null;
+    private JatoSettingsText _settingsEditingText = new JatoSettingsText(new JatoSettings());
     private int? _selectedComponentIndex = null;
+    private bool _showBasics = true;
+    private bool _showAdvanced = false;
+    private bool _showSettings = true;
+    private bool _snapping = true;
+    // standard values
+    private float _standardThrust = 100000f;
+    private float _frontPositionX = 0f;
+    private float _frontPositionY = 0f;
+    private float _frontPositionZ = 0f;
+    private float _rearPositionX = 0f;
+    private float _rearPositionY = 0f;
+    private float _rearPositionZ = 0f;
 
-    (Transform transform, Rigidbody Rigidbody, TrainCar trainCar)? GetJatoTargetInfo()
+    void Start()
+    {
+        Logger.Log("[Panel] Start");
+        PlayerManager.CarChanged += OnCarChanged;
+    }
+
+    void OnDestroy()
+    {
+        Logger.Log("[Panel] Destroy");
+        PlayerManager.CarChanged -= OnCarChanged;
+    }
+
+    void OnCarChanged(TrainCar newRrainCar)
+    {
+        Logger.Log("[Panel] Car changed - clearing");
+        UnselectJatos();
+    }
+
+    (Transform transform, Rigidbody rigidbody, TrainCar trainCar)? GetJatoTargetInfo()
     {
         if (PlayerManager.Car == null)
             return null;
@@ -30,108 +79,81 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         return (PlayerManager.Car.transform, PlayerManager.Car.rb, PlayerManager.Car);
     }
 
+    Transform? GetJatoTargetTransform()
+    {
+        if (PlayerManager.Car == null)
+            return null;
+
+        return PlayerManager.Car.transform;
+    }
+
     void AddJato()
     {
+        Logger.Log("[Panel] Add jato");
+
         var target = GetJatoTargetInfo();
         if (target == null)
             return;
 
         var (transform, rigidbody, trainCar) = target.Value;
 
-        JatoManager.AddJato(transform, trainCar, rigidbody, NewSettings);
+        JatoManager.AddJato(transform, trainCar, rigidbody, new JatoSettings()
+        {
+            KeyCode = KeyCode.LeftShift
+        });
 
         _selectedComponentIndex = null;
     }
 
-    void AddMirroredJato()
+    void RemoveJato(int jatoIndex)
     {
-        var target = GetJatoTargetInfo();
+        Logger.Log($"[Panel] Remove jato #{jatoIndex}");
+
+        var target = GetJatoTargetTransform();
         if (target == null)
             return;
 
-        var (transform, rigidbody, trainCar) = target.Value;
-
-        JatoManager.AddJato(transform, trainCar, rigidbody, NewSettings);
-
-        var oldPosX = NewSettings.PositionX;
-
-        NewSettings.PositionX *= -1;
-
-        JatoManager.AddJato(transform, trainCar, rigidbody, NewSettings);
-
-        NewSettings.PositionX = oldPosX;
-
-        _selectedComponentIndex = null;
-    }
-
-    void UpdateJato(bool applyOffsets = true)
-    {
-        var target = GetJatoTargetInfo();
-        if (target == null)
-            return;
-
-        var (transform, rigidbody, trainCar) = target.Value;
-
-        JatoManager.UpdateJato(transform, NewSettings, _selectedComponentIndex, applyOffsets);
-    }
-
-    void RemoveJato()
-    {
-        var target = GetJatoTargetInfo();
-        if (target == null)
-            return;
-
-        var (transform, rigidbody, trainCar) = target.Value;
-
-        JatoManager.RemoveJato(transform, _selectedComponentIndex);
-
-        _selectedComponentIndex = null;
+        JatoManager.RemoveJato(target, jatoIndex);
     }
 
     void StopTrainMoving()
     {
+        Logger.Log("[Panel] Stopping train moving");
+
         var target = GetJatoTargetInfo();
         if (target == null)
             return;
 
-        var (transform, rigidbody, trainCar) = target.Value;
-
-        // fix null error from the game
-        if (trainCar == null)
-            return;
-
-        Logger.Log("Stopping train moving");
-
-        trainCar.StopMovement();
+        target.Value.trainCar.StopMovement();
     }
 
     void DerailTrain()
     {
+        Logger.Log("[Panel] Derail train");
+
         var target = GetJatoTargetInfo();
         if (target == null)
             return;
 
-        var (transform, rigidbody, trainCar) = target.Value;
-
-        Logger.Log("Derail train");
-
-        trainCar.Derail();
+        target.Value.trainCar.Derail();
     }
 
     private void EnableNoDerail()
     {
+        Logger.Log($"[Panel] Enable no-derail");
         Globals.G.GameParams.DerailStressThreshold = float.PositiveInfinity;
     }
 
     private void DisableNoDerail()
     {
+        Logger.Log($"[Panel] Disable no-derail");
         Globals.G.GameParams.DerailStressThreshold = Globals.G.GameParams.defaultStressThreshold;
     }
 
     private void UpdateDebugTexts()
     {
         var target = GetJatoTargetInfo();
-        var comps = JatoManager.allJatos;
+        var comps = JatoManager.GetAllJatos();
 
         if (target == null || _selectedComponentIndex == null)
         {
@@ -143,7 +165,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
 
         var compsOnTarget = JatoManager.GetJatos(target!.Value.transform);
 
-        for (var i = 0; i < compsOnTarget.Length; i++)
+        for (var i = 0; i < compsOnTarget.Count; i++)
         {
             var comp = compsOnTarget[i];
 
@@ -151,236 +173,719 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         }
     }
 
-    private void AutoPosition()
+    public Vector3? GetStandardRearJatoPosition(TrainCar trainCar)
     {
+        switch (trainCar.carType)
+        {
+            case TrainCarType.LocoShunter:
+                return new Vector3(1.125f, 1.51f, -3f);
+            case TrainCarType.LocoDH4:
+                return new Vector3(1.122f, 1.55f, -5.07f);
+        }
+
+        return null;
+    }
+
+    public Vector3? GetStandardFrontJatoPosition(TrainCar trainCar)
+    {
+        switch (trainCar.carType)
+        {
+            case TrainCarType.LocoShunter:
+                return new Vector3(1.125f, 1.51f, 3f);
+            case TrainCarType.LocoDH4:
+                return new Vector3(1.122f, 1.55f, 5f);
+        }
+
+        return null;
+    }
+
+    public void Window(Rect rect)
+    {
+        UpdateDebugTexts();
+
+        var target = GetJatoTargetInfo();
+
+        GUILayout.Label($"Train Car: {(target != null ? $"{target.Value.trainCar.carType} ({TrainCarHelper.GetForwardSpeed(target.Value.trainCar):F1} kph)" : "(none)")}"); ;
+
+        if (GUILayout.Button("<b>Basics</b>", GUI.skin.label)) _showBasics = !_showBasics;
+        if (_showBasics) DrawBasics(target != null ? target.Value.transform : null);
+
+        if (GUILayout.Button("<b>Advanced</b>", GUI.skin.label)) _showAdvanced = !_showAdvanced;
+        if (_showAdvanced) DrawAdvanced(rect);
+
+        if (GUILayout.Button("<b>Settings</b>", GUI.skin.label)) _showSettings = !_showSettings;
+        if (_showSettings) DrawSettings();
+    }
+
+    void DrawBasics(Transform? target)
+    {
+        GUI.enabled = target != null;
+
+        void OnChange() => HydrateStandardJatos(target);
+
+        GUILayout.Label($"Thrust (newtons): {_standardThrust}");
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("10000", GUILayout.Width(40));
+        float thrustStepped = _snapping ? Mathf.Round(_standardThrust / 10000f) * 10000f : _standardThrust;
+        var newThrust = GUILayout.HorizontalSlider(thrustStepped, 10000f, 1000000f);
+        GUILayout.Label("1000000", GUILayout.Width(70));
+        GUILayout.EndHorizontal();
+
+        if (newThrust != _standardThrust)
+        {
+            _standardThrust = newThrust;
+            OnChange();
+        }
+
+        if (GUILayout.Button("Add 2 Rear JATOs (Shift)"))
+        {
+            AddStandardRearJatos();
+        }
+
+        DrawStandardJatoOffsetSlider("X", ref _rearPositionX, 0f, 5f, OnChange);
+        DrawStandardJatoOffsetSlider("Y", ref _rearPositionY, 0f, 5f, OnChange);
+        DrawStandardJatoOffsetSlider("Z", ref _rearPositionZ, -10f, 10f, OnChange);
+
+        if (GUILayout.Button("Add 2 Front JATOs (Ctrl)"))
+        {
+            AddStandardFrontJatos();
+        }
+
+        DrawStandardJatoOffsetSlider("X", ref _frontPositionX, 0f, 5f, OnChange);
+        DrawStandardJatoOffsetSlider("Y", ref _frontPositionY, 0f, 5f, OnChange);
+        DrawStandardJatoOffsetSlider("Z", ref _frontPositionZ, -10f, 10f, OnChange);
+
+        if (GUILayout.Button("Remove All JATOs From Train"))
+        {
+            RemoveAllJatosFromCurrentTrain();
+        }
+
+        GUI.enabled = true;
+    }
+
+    void DrawStandardJatoOffsetSlider(string label, ref float value, float min, float max, Action onChange)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"{label}: ", GUILayout.Width(50));
+        GUILayout.Label($"{min}m", GUILayout.Width(40));
+        var newValueRaw = GUILayout.HorizontalSlider(value, min, max);
+        var newValue = _snapping ? Mathf.Round(newValueRaw / 0.05f) * 0.05f : newValueRaw;
+        GUILayout.Label($"{max}m", GUILayout.Width(40));
+        GUILayout.EndHorizontal();
+
+        if (newValue != value)
+        {
+            value = newValue;
+            onChange();
+        }
+    }
+
+    void DrawAdvanced(Rect rect)
+    {
+        DrawJatosEditor(rect);
+    }
+
+    void DrawJatosEditor(Rect rect)
+    {
+        var target = GetJatoTargetInfo();
+
+        if (target == null)
+        {
+            GUILayout.Label("Must select a train car first");
+            _selectedComponentIndex = -1;
+            return;
+        }
+
+        var jatos = JatoManager.GetJatos(target.Value.transform);
+
+        var bold = new GUIStyle(GUI.skin.label);
+        bold.fontStyle = FontStyle.Bold;
+
+        if (jatos.Count > 0)
+        {
+            for (var i = 0; i < jatos.Count; i++)
+            {
+                var jato = jatos[i];
+
+                GUILayout.BeginHorizontal();
+                GUILayout.Label($"Jato {i + 1}{(jato.side != null ? $" ({jato.side})" : "")}{(i == _selectedComponentIndex ? " ✓" : "")}", bold);
+                if (GUILayout.Button("Edit", GUILayout.Width(50)))
+                {
+                    if (_selectedComponentIndex == i)
+                        UnselectJatos();
+                    else
+                        SelectJato(i, jato);
+                }
+
+                if (GUILayout.Button("Mirror", GUILayout.Width(50)))
+                {
+                    MirrorJato(i, jato);
+                }
+
+                if (GUILayout.Button("Delete", GUILayout.Width(50)))
+                {
+                    RemoveJato(i);
+                    UnselectJatos();
+                }
+                GUILayout.EndHorizontal();
+
+                if (_selectedComponentIndex == i)
+                {
+                    DrawJatoEditor(i, jato);
+                }
+                else
+                {
+                    GUIStyle small = new GUIStyle(GUI.skin.label);
+                    small.fontSize = 10;
+
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label($"Thrust: {jato.settings.Thrust}", small, GUILayout.Width(rect.width * 0.3f));
+                    GUILayout.Label($"Position: {jato.settings.PositionX:F1}, {jato.settings.PositionY:F1}, {jato.settings.PositionZ:F1}", small, GUILayout.Width(rect.width * 0.3f));
+                    GUILayout.Label($"Key: {jato.settings.KeyCode}", small, GUILayout.Width(rect.width * 0.3f));
+                    GUILayout.EndHorizontal();
+
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label("", small, GUILayout.Width(rect.width * 0.3f));
+                    GUILayout.Label($"Rotation: {jato.settings.RotationX:F1}, {jato.settings.RotationY:F1}, {jato.settings.RotationZ:F1}", small, GUILayout.Width(rect.width * 0.3f));
+                    GUILayout.Label("", small, GUILayout.Width(rect.width * 0.3f));
+                    GUILayout.EndHorizontal();
+                }
+            }
+        }
+        else
+        {
+            GUILayout.Label("No JATOs found on this train car");
+
+            _selectedComponentIndex = null;
+        }
+
+        if (GUILayout.Button("ADD NEW JATO"))
+        {
+            AddBasicJato();
+        }
+    }
+
+    void SelectJato(int jatoIndex, UniversalJato jato)
+    {
+        Logger.Log($"[Panel] Select jato #{jatoIndex}");
+
+        _selectedComponentIndex = jatoIndex;
+
+        _settingsEditingDraft = jato.settings.Clone();
+
+        _settingsEditingText = new JatoSettingsText(_settingsEditingDraft);
+    }
+
+    void UnselectJatos()
+    {
+        _settingsEditingDraft = null;
+        _selectedComponentIndex = null;
+    }
+
+    void DrawJatoPositionInput(string label, ref string textValue, ref float value, float min, float max, Action onChange)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"{label}: ", GUILayout.Width(50));
+        GUILayout.Label($"{min}m", GUILayout.Width(40));
+        var newValueRaw = GUILayout.HorizontalSlider(value, min, max);
+        var newValue = _snapping ? Mathf.Round(newValueRaw / 0.05f) * 0.05f : newValueRaw;
+        GUILayout.Label($"{max}m", GUILayout.Width(40));
+        var newTextValue = GUILayout.TextField(textValue, GUILayout.Width(50));
+        GUILayout.EndHorizontal();
+
+        if (newValue != value)
+        {
+            value = newValue;
+            textValue = newValue.ToString();
+            onChange();
+            return;
+        }
+        if (newTextValue != textValue)
+        {
+            textValue = newTextValue;
+            if (float.TryParse(newTextValue, out float floatResult))
+            {
+                if (floatResult != value)
+                {
+                    value = floatResult;
+                    onChange();
+                }
+            }
+        }
+    }
+
+    void DrawJatoRotationInput(string label, ref string textValue, ref float value, Action onChange)
+    {
+        var min = 0;
+        var max = 360;
+        var snapAmount = 5f;
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"{label}: ", GUILayout.Width(50));
+        GUILayout.Label($"0", GUILayout.Width(40));
+        var newValueRaw = GUILayout.HorizontalSlider(value, min, max);
+        var newValue = _snapping ? Mathf.Round(newValueRaw / snapAmount) * snapAmount : newValueRaw;
+        GUILayout.Label($"360", GUILayout.Width(40));
+        var newTextValue = GUILayout.TextField(textValue, GUILayout.Width(50));
+        GUILayout.EndHorizontal();
+
+        if (newValue != value)
+        {
+            value = newValue;
+            textValue = newValue.ToString();
+            onChange();
+            return;
+        }
+        if (newTextValue != textValue)
+        {
+            textValue = newTextValue;
+            if (float.TryParse(newTextValue, out float floatResult))
+            {
+                if (floatResult != value)
+                {
+                    value = floatResult;
+                    onChange();
+                }
+            }
+        }
+    }
+
+    void DrawJatoScaleInput(string label, ref string textValue, ref float value, Action onChange)
+    {
+        var min = 0.1f;
+        var max = 5;
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"{label}: ", GUILayout.Width(50));
+        GUILayout.Label($"{min}m", GUILayout.Width(40));
+        var newValueRaw = GUILayout.HorizontalSlider(value, min, max);
+        var newValue = _snapping ? Mathf.Round(newValueRaw / 0.05f) * 0.05f : newValueRaw;
+        GUILayout.Label($"{max}m", GUILayout.Width(40));
+        var newTextValue = GUILayout.TextField(textValue, GUILayout.Width(50));
+        GUILayout.EndHorizontal();
+
+        if (newValue != value)
+        {
+            value = newValue;
+            textValue = newValue.ToString();
+            onChange();
+            return;
+        }
+        if (newTextValue != textValue)
+        {
+            textValue = newTextValue;
+            if (float.TryParse(newTextValue, out float floatResult))
+            {
+                if (floatResult != value)
+                {
+                    value = floatResult;
+                    onChange();
+                }
+            }
+        }
+    }
+
+    void MirrorJato(int jatoIndex, UniversalJato jato)
+    {
+        Logger.Log($"Mirroring #{jatoIndex}...");
+
+        var target = GetJatoTargetInfo();
+
+        if (target == null)
+            return;
+
+        var existingJato = JatoManager.GetJatos(target.Value.transform)[jatoIndex];
+
+        if (existingJato == null)
+            throw new Exception($"Could not find jato at index {jatoIndex} on transform {target.Value.transform} (count: {JatoManager.GetJatoCount(target.Value.transform)})");
+
+        var newSettings = existingJato.settings.Clone();
+        newSettings.PositionX *= -1;
+        newSettings.RotationY *= -1;
+
+        JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, newSettings);
+    }
+
+    void AddBasicJato()
+    {
+        Logger.Log("[Panel] Adding basic rocket...");
+
+        var target = GetJatoTargetInfo();
+
+        if (target == null)
+            return;
+
+        var newSettings = new JatoSettings();
+
+        JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, newSettings);
+    }
+
+    private bool _showKeys;
+    private KeyCode[] _allKeys = (KeyCode[])Enum.GetValues(typeof(KeyCode));
+
+    void DrawJatoKeybindingEditor(int jatoIndex, UniversalJato jato)
+    {
+        if (_settingsEditingDraft == null)
+            return;
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Key:");
+
+        if (GUILayout.Button(_settingsEditingDraft.KeyCode.ToString(), GUILayout.Width(100)))
+            _showKeys = !_showKeys;
+
+        GUILayout.EndHorizontal();
+
+        if (_showKeys)
+        {
+            int columns = 4;
+            int count = 0;
+
+            GUILayout.BeginHorizontal();
+            foreach (var k in _allKeys)
+            {
+                if (GUILayout.Button(k.ToString(), GUILayout.Width(100)))
+                {
+                    _settingsEditingDraft.KeyCode = k;
+                    _showKeys = false;
+                    HydrateJato(jatoIndex, jato);
+                }
+
+                count++;
+                if (count % columns == 0)
+                {
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                }
+            }
+            GUILayout.EndHorizontal();
+        }
+    }
+
+    void DrawJatoThrustEditor(int jatoIndex, UniversalJato jato)
+    {
+        if (_settingsEditingDraft == null)
+            return;
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"Thrust:", GUILayout.Width(75));
+        _settingsEditingText.Thrust = GUILayout.TextField(_settingsEditingText.Thrust, GUILayout.Width(100));
+        if (float.TryParse(_settingsEditingText.Thrust, out float thrustResult))
+        {
+            var needsApplying = thrustResult != _settingsEditingDraft.Thrust;
+
+            _settingsEditingDraft.Thrust = thrustResult;
+
+            if (needsApplying)
+                HydrateJato(jatoIndex, jato);
+        }
+
+        Dictionary<string, float> forces = new Dictionary<string, float>()
+        {
+            { "100k", 100000f },
+            { "250k", 250000f },
+            { "500k", 500000f },
+            { "1m", 1000000f },
+        };
+
+        foreach (var kv in forces)
+        {
+            if (GUILayout.Button(kv.Key, GUILayout.Width(50)))
+            {
+                _settingsEditingText.Thrust = kv.Value.ToString();
+                // is automatically parsed and applied
+            }
+        }
+        GUILayout.EndHorizontal();
+    }
+
+    void DrawJatoEditor(int jatoIndex, UniversalJato jato)
+    {
+        if (_settingsEditingDraft == null)
+            return;
+
+        DrawJatoKeybindingEditor(jatoIndex, jato);
+        DrawJatoThrustEditor(jatoIndex, jato);
+
+        GUILayout.Label("Position:");
+
+        DrawJatoPositionInput("X", ref _settingsEditingText.PositionX, ref _settingsEditingDraft.PositionX, 0f, 5f, () => HydrateJato(jatoIndex, jato));
+        DrawJatoPositionInput("Y", ref _settingsEditingText.PositionY, ref _settingsEditingDraft.PositionY, 0f, 5f, () => HydrateJato(jatoIndex, jato));
+        DrawJatoPositionInput("Z", ref _settingsEditingText.PositionZ, ref _settingsEditingDraft.PositionZ, -10f, 10f, () => HydrateJato(jatoIndex, jato));
+
+        GUILayout.Label("Rotation:");
+
+        DrawJatoRotationInput("X", ref _settingsEditingText.RotationX, ref _settingsEditingDraft.RotationX, () => HydrateJato(jatoIndex, jato));
+        DrawJatoRotationInput("Y", ref _settingsEditingText.RotationY, ref _settingsEditingDraft.RotationY, () => HydrateJato(jatoIndex, jato));
+        DrawJatoRotationInput("Z", ref _settingsEditingText.RotationZ, ref _settingsEditingDraft.RotationZ, () => HydrateJato(jatoIndex, jato));
+
+        DrawJatoScaleInput("Scale", ref _settingsEditingText.Scale, ref _settingsEditingDraft.Scale, () => HydrateJato(jatoIndex, jato));
+
+        var newForceOn = GUILayout.Toggle(_settingsEditingDraft.ForceOn, "Force on");
+        var newRequireSittingInside = GUILayout.Toggle(_settingsEditingDraft.RequireSittingInside, "Require on train for keybinding to work");
+        var newHideBody = GUILayout.Toggle(_settingsEditingDraft.HideBody, "Only show flame");
+
+        if (
+            newForceOn != _settingsEditingDraft.ForceOn ||
+            newRequireSittingInside != _settingsEditingDraft.ForceOn ||
+            newHideBody != _settingsEditingDraft.HideBody
+        )
+        {
+            _settingsEditingDraft.ForceOn = newForceOn;
+            _settingsEditingDraft.RequireSittingInside = newRequireSittingInside;
+            _settingsEditingDraft.HideBody = newHideBody;
+            HydrateJato(jatoIndex, jato);
+        }
+
+        DrawJatoVolumeSlider(jatoIndex, jato);
+    }
+
+    void HydrateJato(int jatoIndex, UniversalJato jato)
+    {
+        if (_settingsEditingDraft == null)
+            return;
+
+        JatoManager.UpdateJato(jato, _settingsEditingDraft);
+    }
+
+    void DrawJatoVolumeSlider(int jatoIndex, UniversalJato jato)
+    {
+        if (_settingsEditingDraft == null)
+            return;
+
+        var min = 0;
+        var max = 1f;
+        var value = _settingsEditingDraft.SoundVolume;
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"Volume: ", GUILayout.Width(50));
+        GUILayout.Label("0", GUILayout.Width(40));
+        var newValueRaw = GUILayout.HorizontalSlider(value, min, max);
+        var newValue = _snapping ? Mathf.Round(newValueRaw / 0.05f) * 0.05f : newValueRaw;
+        GUILayout.Label("100", GUILayout.Width(40));
+        GUILayout.EndHorizontal();
+        if (newValue != _settingsEditingDraft.SoundVolume)
+        {
+            _settingsEditingDraft.SoundVolume = newValue;
+            HydrateJato(jatoIndex, jato);
+        }
+    }
+
+    void DrawSettings()
+    {
+        var target = GetJatoTargetInfo();
+
+        _snapping = GUILayout.Toggle(_snapping, "Snapping");
+
+        var newPreventDerail = GUILayout.Toggle(Main.settings.PreventDerail, "Prevent derail");
+        if (newPreventDerail != Main.settings.PreventDerail)
+        {
+            Main.settings.PreventDerail = newPreventDerail;
+            Main.settings.Save(Main.ModEntry);
+
+            // TODO: move to something else that subscribes to this
+            if (Main.settings.PreventDerail)
+                EnableNoDerail();
+            else
+                DisableNoDerail();
+        }
+
+        GUI.enabled = target != null;
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Stop"))
+        {
+            StopTrainMoving();
+        }
+        if (GUILayout.Button("Repair"))
+        {
+            RepairTrain();
+        }
+        if (GUILayout.Button("Derail"))
+        {
+            DerailTrain();
+        }
+        if (GUILayout.Button("Rerail"))
+        {
+            RerailTrain();
+        }
+        if (GUILayout.Button("Rerail (back)"))
+        {
+            RerailTrain(isReverse: true);
+        }
+        GUI.enabled = true;
+        GUILayout.EndHorizontal();
+
+        if (GUILayout.Button("Remove ALL JATOs"))
+        {
+            RemoveAllJatosFromAllTrains();
+        }
+    }
+
+    public void RerailTrain(bool isReverse = false)
+    {
+        Logger.Log("[Panel] Rerailing train...");
+
+        TrainCarHelper.RerailTrain(PlayerManager.Car, isReverse);
+    }
+
+    public void RepairTrain()
+    {
+        Logger.Log("[Panel] Repairing train...");
+
+        TrainCarHelper.RepairTrain(PlayerManager.Car);
+    }
+
+    public void HydrateStandardJatos(Transform? target)
+    {
+        if (target == null)
+            return;
+
+        // TODO: move to manager
+
+        var jatos = JatoManager.GetJatos(target);
+
+        var standardJatos = jatos.Where(x => x.side != null);
+
+        foreach (var jato in standardJatos)
+        {
+            jato.settings.Thrust = _standardThrust;
+
+            switch (jato.side)
+            {
+                case StandardSide.FrontLeft:
+                    jato.settings.PositionX = _frontPositionX * -1;
+                    jato.settings.PositionY = _frontPositionY;
+                    jato.settings.PositionZ = _frontPositionZ;
+                    break;
+                case StandardSide.FrontRight:
+                    jato.settings.PositionX = _frontPositionX;
+                    jato.settings.PositionY = _frontPositionY;
+                    jato.settings.PositionZ = _frontPositionZ;
+                    break;
+                case StandardSide.RearLeft:
+                    Logger.Log($"REAR LEFT {jato.settings.PositionX} => {_rearPositionX * -1}");
+
+                    jato.settings.PositionX = _rearPositionX * -1;
+                    jato.settings.PositionY = _rearPositionY;
+                    jato.settings.PositionZ = _rearPositionZ;
+                    break;
+                case StandardSide.RearRight:
+                    jato.settings.PositionX = _rearPositionX;
+                    jato.settings.PositionY = _rearPositionY;
+                    jato.settings.PositionZ = _rearPositionZ;
+                    break;
+            }
+
+            JatoManager.ApplyOffsetsToRocket(jato.transform, jato.settings);
+        }
+    }
+
+    public void AddStandardRearJatos()
+    {
+        Logger.Log("[Panel] Adding standard rear jatos...");
+
         var target = GetJatoTargetInfo();
         if (target == null)
             return;
 
-        var (transform, rigidbody, trainCar) = target.Value;
+        var position = GetStandardRearJatoPosition(target.Value.trainCar);
 
-        var positionX = 0f;
-        var positionY = 0f;
-        var positionZ = 0f;
+        if (position == null)
+            position = TrainCarHelper.GetApproxStandardRearJatoPosition(target.Value.trainCar);
 
-        switch (trainCar.carType)
+        if (position == null)
+            position = new Vector3(2f, 0, 3f);
+
+        var settingsRight = new JatoSettings()
         {
-            case TrainCarType.LocoShunter:
-                positionX = 1.125f;
-                positionY = 1.51f;
-                positionZ = -3f;
-                break;
-                // TODO
-        }
+            Thrust = _standardThrust,
+            KeyCode = KeyCode.LeftShift,
+            PositionX = position.Value.x,
+            PositionY = position.Value.y,
+            PositionZ = position.Value.z
+        };
 
-        _positionXText = positionX.ToString();
-        _positionYText = positionY.ToString();
-        _positionZText = positionZ.ToString();
+        _rearPositionX = settingsRight.PositionX;
+        _rearPositionY = settingsRight.PositionY;
+        _rearPositionZ = settingsRight.PositionZ;
 
-        NewSettings.PositionX = positionX;
-        NewSettings.PositionY = positionY;
-        NewSettings.PositionZ = positionZ;
+        var addedComponentRight = JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsRight);
+        addedComponentRight.side = StandardSide.RearRight;
+
+        var settingsLeft = new JatoSettings()
+        {
+            Thrust = _standardThrust,
+            KeyCode = KeyCode.LeftShift,
+            PositionX = position.Value.x * -1,
+            PositionY = position.Value.y,
+            PositionZ = position.Value.z
+        };
+
+        var addedComponentLeft = JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsLeft);
+        addedComponentLeft.side = StandardSide.RearLeft;
     }
 
-    private bool _isRecordingKey = false;
-
-    public void Window(Rect rect)
+    public void AddStandardFrontJatos()
     {
+        Logger.Log("[Panel] Adding standard front jatos...");
+
         var target = GetJatoTargetInfo();
+        if (target == null)
+            return;
 
-        bool? alreadyHasJato = target != null ? JatoManager.GetDoesTargetHaveJato(target.Value.transform) : null;
+        var position = GetStandardFrontJatoPosition(target.Value.trainCar);
 
-        GUILayout.Label($"Target: {(target != null ? $"{target.Value.trainCar.carType} {target.Value.trainCar.carLivery.id}" : "(none)")}");
+        if (position == null)
+            position = TrainCarHelper.GetApproxStandardFrontJatoPosition(target.Value.trainCar);
 
-        if (target != null)
+        if (position == null)
+            position = new Vector3(2f, 0, 3f);
+
+        var settingsRight = new JatoSettings()
         {
-            var count = JatoManager.GetJatoCount(target.Value.transform);
+            Thrust = _standardThrust,
+            KeyCode = KeyCode.LeftControl,
+            PositionX = position.Value.x,
+            PositionY = position.Value.y,
+            PositionZ = position.Value.z,
+            RotationX = 180
+        };
 
-            if (count > 1)
-            {
-                for (var i = 0; i < count; i++)
-                {
-                    if (GUILayout.Button($"#{i + 1}{(i == _selectedComponentIndex ? " ✓" : "")}", GUILayout.Width(50f)))
-                    {
-                        if (_selectedComponentIndex == i)
-                            _selectedComponentIndex = null;
-                        else
-                            _selectedComponentIndex = i;
-                    }
-                }
-            }
-            else
-            {
-                _selectedComponentIndex = null;
-            }
-        }
-        else
+        _frontPositionX = settingsRight.PositionX;
+        _frontPositionY = settingsRight.PositionY;
+        _frontPositionZ = settingsRight.PositionZ;
+
+        var addedComponentRight = JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsRight);
+        addedComponentRight.side = StandardSide.FrontRight;
+
+        var settingsLeft = new JatoSettings()
         {
-            _selectedComponentIndex = null;
-        }
+            Thrust = _standardThrust,
+            KeyCode = KeyCode.LeftControl,
+            PositionX = position.Value.x * -1,
+            PositionY = position.Value.y,
+            PositionZ = position.Value.z,
+            RotationX = 180
+        };
 
-        UpdateDebugTexts();
+        var addedComponentLeft = JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsLeft);
+        addedComponentLeft.side = StandardSide.FrontLeft;
+    }
 
-        GUILayout.Label($"Key:");
-        _keyCodeText = GUILayout.TextField(_keyCodeText);
+    public void RemoveAllJatosFromCurrentTrain()
+    {
+        Logger.Log("[Panel] Removing all jatos from current train...");
 
-        if (Enum.TryParse(_keyCodeText, out KeyCode keyCodeResult))
-        {
-            NewSettings.KeyCode = keyCodeResult;
-        }
-        GUILayout.Label($"(any Unity keycode eg. 'LeftShift', 'E', 'Enter', 'F12', 'UpArrow')");
+        var target = GetJatoTargetInfo();
+        if (target == null)
+            return;
 
-        if (GUILayout.Button("Record Key"))
-        {
-            _isRecordingKey = true;
-        }
+        JatoManager.RemoveAllJatos(target.Value.transform);
+    }
 
-        if (_isRecordingKey)
-        {
-            GUILayout.Label("Waiting for you to press a key...");
+    public void RemoveAllJatosFromAllTrains()
+    {
+        Logger.Log("[Panel] Removing all jatos from ALL...");
 
-            var e = Event.current;
-            if (e.type == EventType.KeyDown)
-            {
-                NewSettings.KeyCode = e.keyCode;
-                _keyCodeText = e.keyCode.ToString();
-                _isRecordingKey = false;
-            }
-        }
-
-        GUILayout.Label($"Thrust (newtons):");
-        _thrustText = GUILayout.TextField(_thrustText);
-        if (float.TryParse(_thrustText, out float thrustResult))
-        {
-            NewSettings.Thrust = thrustResult;
-        }
-
-        GUILayout.BeginHorizontal();
-        string[] forces = ["50,000", "100,000", "250,000", "500,000", "1,000,000"];
-        foreach (var force in forces)
-        {
-            if (GUILayout.Button(force))
-            {
-                _thrustText = force;
-            }
-        }
-        GUILayout.EndHorizontal();
-
-        NewSettings.ForceOn = GUILayout.Toggle(NewSettings.ForceOn, "Force on");
-        NewSettings.RequireSittingInside = GUILayout.Toggle(NewSettings.RequireSittingInside, "Must be on train to use");
-        NewSettings.HideBody = GUILayout.Toggle(NewSettings.HideBody, "Only show flame");
-
-        GUILayout.Label($"Volume:");
-        NewSettings.SoundVolume = GUILayout.HorizontalSlider(NewSettings.SoundVolume, 0f, 1f);
-
-        GUI.enabled = alreadyHasJato == true;
-        if (GUILayout.Button(_selectedComponentIndex != null ? $"Update #{_selectedComponentIndex + 1}" : "Update All"))
-        {
-            UpdateJato(applyOffsets: false);
-        }
-        GUI.enabled = true;
-
-        GUILayout.BeginHorizontal();
-        GUILayout.Label($"Position:");
-
-        _positionXText = GUILayout.TextField(_positionXText, GUILayout.Width(40f));
-        if (float.TryParse(_positionXText, out float positionXResult))
-        {
-            NewSettings.PositionX = positionXResult;
-        }
-
-        _positionYText = GUILayout.TextField(_positionYText, GUILayout.Width(40f));
-        if (float.TryParse(_positionYText, out float positionYResult))
-        {
-            NewSettings.PositionY = positionYResult;
-        }
-
-        _positionZText = GUILayout.TextField(_positionZText, GUILayout.Width(40f));
-        if (float.TryParse(_positionZText, out float positionZResult))
-        {
-            NewSettings.PositionZ = positionZResult;
-        }
-
-        if (GUILayout.Button("Auto", GUILayout.Width(50f)))
-        {
-            AutoPosition();
-        }
-        GUILayout.EndHorizontal();
-
-        GUILayout.BeginHorizontal();
-        GUILayout.Label($"Rotation:");
-
-        _rotationXText = GUILayout.TextField(_rotationXText, GUILayout.Width(40f));
-        if (float.TryParse(_rotationXText, out float rotationXResult))
-        {
-            NewSettings.RotationX = rotationXResult;
-        }
-
-        _rotationYText = GUILayout.TextField(_rotationYText, GUILayout.Width(40f));
-        if (float.TryParse(_rotationYText, out float rotationYResult))
-        {
-            NewSettings.RotationY = rotationYResult;
-        }
-
-        _rotationZText = GUILayout.TextField(_rotationZText, GUILayout.Width(40f));
-        if (float.TryParse(_rotationZText, out float rotationZResult))
-        {
-            NewSettings.RotationZ = rotationZResult;
-        }
-
-        GUILayout.Label("", GUILayout.Width(50f));
-        GUILayout.EndHorizontal();
-
-        GUILayout.Label($"Scale:");
-        _scaleText = GUILayout.TextField(_scaleText, GUILayout.Width(40f));
-        if (float.TryParse(_scaleText, out float scaleResult))
-        {
-            NewSettings.Scale = scaleResult;
-        }
-
-        if (GUILayout.Button("Add"))
-        {
-            AddJato();
-        }
-        GUI.enabled = alreadyHasJato == true;
-        if (GUILayout.Button(_selectedComponentIndex != null ? $"Replace #{_selectedComponentIndex + 1}" : "Replace All"))
-        {
-            UpdateJato();
-        }
-        if (GUILayout.Button(_selectedComponentIndex != null ? $"Remove #{_selectedComponentIndex + 1}" : "Remove All"))
-        {
-            RemoveJato();
-        }
-        GUI.enabled = true;
-
-        GUILayout.Label("If position X is greater than 0:");
-        GUI.enabled = NewSettings.PositionX != 0;
-        if (GUILayout.Button("Add 2 Mirrored"))
-        {
-            AddMirroredJato();
-        }
-        GUI.enabled = true;
-
-        GUILayout.Label($"");
-
-        Main.settings.PreventDerail = GUILayout.Toggle(Main.settings.PreventDerail, "Prevent derail");
-
-        if (Main.settings.PreventDerail)
-            EnableNoDerail();
-        else
-            DisableNoDerail();
-
-        if (GUILayout.Button("Stop Train Moving"))
-        {
-            StopTrainMoving();
-        }
-        if (GUILayout.Button("Derail Train"))
-        {
-            DerailTrain();
-        }
-        if (GUILayout.Button("Save Settings"))
-        {
-            Main.settings.LastJatoSettings = NewSettings.Clone();
-        }
+        JatoManager.RemoveAllJatos();
     }
 }

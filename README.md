@@ -16,12 +16,6 @@ Download the zip and use Unity Mod Manager to install it.
 2. Click the button "UJ" in the top left corner
 3. Configure and add
 
-Default key is "LeftShift"
-
-## Known issues
-
-- audio doesn't work
-
 ## Replacing the rocket mesh
 
 1. Create Unity 2019 project

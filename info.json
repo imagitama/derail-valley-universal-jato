@@ -1,7 +1,7 @@
 {
 	"Id": "DerailValleyUniversalJato",
-	"Version": "1.1.1",
-	"DisplayName": "DerailValleyUniversalJato",
+	"Version": "1.2.0",
+	"DisplayName": "Universal JATO",
 	"Author": "Jared Williams",
 	"EntryMethod": "DerailValleyUniversalJato.Main.Load",
 	"ManagerVersion": "0.32.4",

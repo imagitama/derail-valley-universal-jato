@@ -1,3 +1,9 @@
+# 1.2.0
+
+- overhauled UI
+- better auto-placement
+- fixed crash when removing JATOs from deleted train cars
+
 # 1.1.1
 
 - fixed panel glitching when not in a train

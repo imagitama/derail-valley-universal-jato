@@ -3,6 +3,14 @@ using UnityModManagerNet;
 
 namespace DerailValleyUniversalJato;
 
+public enum StandardSide
+{
+    FrontLeft,
+    FrontRight,
+    RearLeft,
+    RearRight
+}
+
 public class UniversalJato : MonoBehaviour
 {
     private static UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
@@ -18,6 +26,7 @@ public class UniversalJato : MonoBehaviour
     public bool IsOn = false;
     public string? DebugText;
     private UniversalJatoDebugText? _debugText;
+    public StandardSide? side;
 
     void Start()
     {
@@ -97,9 +106,6 @@ public class UniversalJato : MonoBehaviour
 
         if (settings.ForceOn)
             IsOn = true;
-
-        if (IsOn != originallyIsOn)
-            Logger.Log("Boost!");
 
         offStuff?.gameObject.SetActive(IsOn!);
         onStuff?.gameObject.SetActive(IsOn);
