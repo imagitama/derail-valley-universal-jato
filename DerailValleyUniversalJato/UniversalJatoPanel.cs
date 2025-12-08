@@ -74,6 +74,11 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
     {
         Logger.Log("[Panel] Car changed - clearing");
         UnselectJatos();
+
+        if (Main.settings.PreventDerail)
+            TrainCarHelper.EnableNoDerail();
+        else
+            TrainCarHelper.DisableNoDerail();
     }
 
     (Transform transform, Rigidbody rigidbody, TrainCar trainCar)? GetJatoTargetInfo()
