@@ -202,8 +202,10 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         UpdateDebugTexts();
 
         var target = GetJatoTargetInfo();
+        var speed = target.HasValue ? TrainCarHelper.GetForwardSpeed(target.Value.trainCar) : null;
 
-        GUILayout.Label($"Train Car: {(target != null ? $"{target.Value.trainCar.carType} ({TrainCarHelper.GetForwardSpeed(target.Value.trainCar):F1} kph)" : "(none)")}"); ;
+        GUILayout.Label($"Train Car: {(target != null ?
+                $"{target.Value.trainCar.carType}{(speed != null ? $" ({speed:F1} kph)" : "")}" : "(none)")}"); ;
 
         if (GUILayout.Button("<b>Basics</b>", GUI.skin.label)) _showBasics = !_showBasics;
         if (_showBasics) DrawBasics(target != null ? target.Value.transform : null);

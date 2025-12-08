@@ -82,11 +82,15 @@ public static class TrainCarHelper
 
     public static TrainCarCustomization lastTrainCarCustomization;
 
-    public static float GetForwardSpeed(TrainCar car)
+    public static float? GetForwardSpeed(TrainCar car)
     {
         // TODO: cache
         var customComp = car.GetComponent<TrainCarCustomization>();
-        return customComp.ReadPort(STDSimPort.WheelSpeedKMH);
+
+        if (customComp.HasPort(STDSimPort.WheelSpeedKMH))
+            return customComp.ReadPort(STDSimPort.WheelSpeedKMH);
+
+        return null;
     }
 
     public static void RepairTrain(TrainCar car)
