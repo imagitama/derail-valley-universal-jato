@@ -1,3 +1,7 @@
+# 1.3.1
+
+- fixed individual JATO bindings
+
 # 1.3.0
 
 - rebind default controls in settings

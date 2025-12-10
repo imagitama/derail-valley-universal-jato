@@ -382,7 +382,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
                     GUILayout.BeginHorizontal();
                     GUILayout.Label($"Thrust: {jato.settings.Thrust}", small, GUILayout.Width(rect.width * 0.3f));
                     GUILayout.Label($"Position: {jato.settings.PositionX:F1}, {jato.settings.PositionY:F1}, {jato.settings.PositionZ:F1}", small, GUILayout.Width(rect.width * 0.3f));
-                    GUILayout.Label($"Binding: {jato.settings.Binding}", small, GUILayout.Width(rect.width * 0.3f));
+                    GUILayout.Label($"Binding: {jato.settings.Binding.GetLabel()}", small, GUILayout.Width(rect.width * 0.3f));
                     GUILayout.EndHorizontal();
 
                     GUILayout.BeginHorizontal();
@@ -554,17 +554,20 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         if (target == null)
             return;
 
-        var newSettings = new JatoSettings();
+        var newSettings = new JatoSettings()
+        {
+            Binding = new BindingInfo()
+        };
 
         JatoHelper.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, newSettings);
     }
 
-    void DrawJatoKeybindingEditor(int jatoIndex, UniversalJato jato)
+    void DrawJatoBindingEditor(int jatoIndex, UniversalJato jato)
     {
         if (_settingsEditingDraft == null)
             return;
 
-        BindingsHelperUI.DrawBinding(_settingsEditingDraft.Binding, OnUpdated: () => HydrateJato(jatoIndex, jato));
+        BindingsHelperUI.DrawBinding(_settingsEditingDraft.Binding, index: jatoIndex, OnUpdated: () => HydrateJato(jatoIndex, jato));
     }
 
     void DrawJatoThrustEditor(int jatoIndex, UniversalJato jato)
@@ -609,7 +612,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         if (_settingsEditingDraft == null)
             return;
 
-        DrawJatoKeybindingEditor(jatoIndex, jato);
+        DrawJatoBindingEditor(jatoIndex, jato);
         DrawJatoThrustEditor(jatoIndex, jato);
 
         GUILayout.Label("Position:");

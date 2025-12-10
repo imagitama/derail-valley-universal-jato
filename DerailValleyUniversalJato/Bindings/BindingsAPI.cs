@@ -29,10 +29,14 @@ public static class BindingsAPI
             for (int i = 0; i < list.Count; i++)
             {
                 var b = list[i];
-                if (!BindingsByAction.TryGetValue(b.ActionId, out var actionList))
+
+                if (b.ActionId == null)
+                    continue;
+
+                if (!BindingsByAction.TryGetValue(b.ActionId.Value, out var actionList))
                 {
                     actionList = new List<BindingInfo>();
-                    BindingsByAction[b.ActionId] = actionList;
+                    BindingsByAction[b.ActionId.Value] = actionList;
                 }
                 actionList.Add(b);
             }

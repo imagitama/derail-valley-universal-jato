@@ -21,7 +21,7 @@ public class BindingInfo
     public BindingInfo(string label, int actionId, KeyCode keyCode)
     {
         Label = label;
-        ControllerType = ControllerType.Keyboard;
+        ControllerType = Rewired.ControllerType.Keyboard;
         ControllerId = 0;
         ControllerName = "Keyboard";
         ButtonId = BindingsHelper.GetButtonId(keyCode);
@@ -29,12 +29,12 @@ public class BindingInfo
         ActionId = actionId;
     }
     public string Label;
-    public ControllerType ControllerType;
-    public string ControllerName; // not required but helpful
-    public int ControllerId;
-    public string ButtonName; // not required but helpful
-    public int ButtonId;
-    public int ActionId;
+    public Rewired.ControllerType? ControllerType;
+    public string? ControllerName; // not required but helpful
+    public int? ControllerId;
+    public string? ButtonName; // not required but helpful
+    public int? ButtonId;
+    public int? ActionId; // optional for non-standard bindings
     public bool Removable = false;
 
     public override bool Equals(object obj)
@@ -54,6 +54,13 @@ public class BindingInfo
     {
         return $"Binding(cType={ControllerType},cName={ControllerName},cId={ControllerId},bName={ButtonName},bId={ButtonId},aId={ActionId})";
     }
+
+    public string GetLabel()
+    {
+        if (ControllerType == null || ButtonId == null)
+            return "(none)";
+        return $"{ControllerName}.{ButtonName}";
+    }
 }
 
 public static class BindingsHelper
@@ -62,14 +69,10 @@ public static class BindingsHelper
 
     public static bool IsReady => ReInput.isReady && InputManager.NewPlayer != null;
 
-    // private static Action _onReady;
-
     public static event Action OnReady
     {
         add
         {
-            // _onReady += value;
-
             void OnReInputReady()
             {
                 Logger.Log($"[BindingsHelper] OnReady");
@@ -83,15 +86,9 @@ public static class BindingsHelper
         }
         remove
         {
-            // _onReady -= value;
+            // TODO?
         }
     }
-
-    // public static void OnReInputReady()
-    // {
-    //     // TODO: do not keep invoking for every mod
-    //     _onReady?.Invoke();
-    // }
 
     public static int GetButtonId(ControllerType controllerType, int controllerId, string buttonName)
     {
@@ -116,21 +113,9 @@ public static class BindingsHelper
         if (player == null)
             return -1;
 
-        // foreach (var controller in GetAllControllers()!)
-        // {
-        //     Logger.Log($"Controller id={controller.id} name={controller.name}");
-
-        //     foreach (var element in controller.ButtonElementIdentifiers.ToList())
-        //     {
-        //         Logger.Log($"  Element id={element.id} name={element.name} key={element.key}");
-        //     }
-        // }
-
         Keyboard keyboard = (Keyboard)player.controllers.GetController<Keyboard>(0);
 
         var elementForKeyCode = keyboard.GetElementIdentifierByKeyCode(keyCode);
-
-        // Logger.Log($"GOT ELEMENT keyboard={keyboard.name} keyCode={keyCode} element={elementForKeyCode} id={elementForKeyCode?.id}");
 
         if (elementForKeyCode == null)
             return -1;
@@ -176,10 +161,13 @@ public static class BindingsHelper
 
         foreach (var binding in bindingsForAction)
         {
-            // TODO: cache this
-            Controller controller = player.controllers.GetController(binding.ControllerType, binding.ControllerId);
+            if (binding.ControllerType == null || binding.ControllerId == null || binding.ButtonId == null)
+                continue;
 
-            var pressed = controller?.GetButtonById(binding.ButtonId);
+            // TODO: cache this
+            Controller controller = player.controllers.GetController(binding.ControllerType.Value, binding.ControllerId.Value);
+
+            var pressed = controller?.GetButtonById(binding.ButtonId.Value);
 
             if (pressed == true)
                 return true;
@@ -194,10 +182,13 @@ public static class BindingsHelper
         if (player == null)
             return false;
 
-        // TODO: cache this
-        Controller controller = player.controllers.GetController(binding.ControllerType, binding.ControllerId);
+        if (binding.ControllerType == null || binding.ControllerId == null || binding.ButtonId == null)
+            return false;
 
-        var pressed = controller?.GetButtonById(binding.ButtonId);
+        // TODO: cache this
+        Controller controller = player.controllers.GetController(binding.ControllerType.Value, binding.ControllerId.Value);
+
+        var pressed = controller?.GetButtonById(binding.ButtonId.Value);
 
         // Logger.Log($"GetIsPressed {binding} pressed={pressed}");
 

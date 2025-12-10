@@ -65,7 +65,7 @@ public static class BindingsHelperUI
             }
     }
 
-    public static void DrawBinding(BindingInfo binding, Dictionary<int, string>? labels = null, int? index = null, Action? OnUpdated = null)
+    public static void DrawBinding(BindingInfo binding, int? index = null, Action? OnUpdated = null)
     {
         var controllers = BindingsHelper.GetAllControllers();
 
@@ -75,16 +75,13 @@ public static class BindingsHelperUI
         var bold = new GUIStyle(GUI.skin.label);
         bold.fontStyle = FontStyle.Bold;
 
-        if (labels != null && index != null)
-            GUILayout.Label($"{labels[binding.ActionId]}", bold);
-
         GUILayout.Label($"{binding.Label}", bold);
 
-        GUILayout.Label($"  Controller: {binding.ControllerName} ({binding.ControllerType})");
+        GUILayout.Label($"  Controller: {binding.ControllerName ?? "(none)"} ({(binding.ControllerType != null ? binding.ControllerType.Value : "none")})");
 
-        ControllerType newControllerType = binding.ControllerType;
+        ControllerType? newControllerType = binding.ControllerType;
         string? newControllerName = binding.ControllerName;
-        int newControllerId = binding.ControllerId;
+        int? newControllerId = binding.ControllerId;
 
         foreach (var controller in controllers)
         {
@@ -93,21 +90,21 @@ public static class BindingsHelperUI
 
             if (isNowChecked && binding.ControllerName != controller.name)
             {
-                Logger.Log($"  Binding select controller {binding.ControllerName} => {controller.name}");
+                Logger.Log($"[BindingsHelperUI] Binding select controller {binding.ControllerName} => {controller.name}");
                 newControllerType = controller.type;
                 newControllerName = controller.name;
                 newControllerId = controller.id;
             }
         }
 
-        GUILayout.Label($"  Button name: {binding.ButtonName} ({binding.ButtonId})");
+        GUILayout.Label($"  Button name: {binding.ButtonName ?? "(none)"} ({(binding.ButtonId != null ? binding.ButtonId.Value : "(none)")})");
         // var newButtonName = GUILayout.TextField(binding.ButtonName);
         // var newButtonId = BindingsHelper.GetButtonId(newControllerType, newControllerId, newButtonName);
 
         string? newButtonName = null;
         int? newButtonId = null;
 
-        if (_bindingIndexRecording != null && _bindingIndexRecording == index)
+        if (_bindingIndexRecording != null && _bindingIndexRecording == index && newControllerType != null)
         {
             if (GUILayout.Button("Stop Recording"))
             {
@@ -121,18 +118,18 @@ public static class BindingsHelperUI
                 _failsafeTimeLeft -= Time.deltaTime * 0.5f; // OnGUI much faster
                 if (_failsafeTimeLeft < 0f)
                 {
-                    Logger.Log("Binding timer ended");
+                    Logger.Log("[BindingsHelperUI] Binding timer ended");
                     _failsafeTimeLeft = 0f;
                     _bindingIndexRecording = null;
                 }
             }
 
-            var result = BindingsHelper.GetAnyButtonPressedInfo(newControllerType);
+            var result = BindingsHelper.GetAnyButtonPressedInfo(newControllerType.Value);
 
             if (result != null)
             {
                 var (pressedButtonName, pressedButtonId) = result.Value;
-                Logger.Log($"User pressed controllerType={newControllerType} controllerName={newControllerName} name={pressedButtonName} id={pressedButtonId}");
+                Logger.Log($"[BindingsHelperUI] User pressed controllerType={newControllerType} controllerName={newControllerName} name={pressedButtonName} id={pressedButtonId}");
                 newButtonName = pressedButtonName;
                 newButtonId = pressedButtonId;
 
@@ -143,15 +140,15 @@ public static class BindingsHelperUI
         {
             if (GUILayout.Button("Record"))
             {
-                Logger.Log("Binding timer started");
+                Logger.Log("[BindingsHelperUI] Binding timer started");
                 _bindingIndexRecording = index;
                 _failsafeTimeLeft = 5f;
             }
         }
 
-        if (index != null && _bindingIndexRecording == null)
+        if (index != null && _bindingIndexRecording == null && binding.ControllerType != null && binding.ControllerId != null && binding.ButtonId != null)
         {
-            if (BindingsHelper.GetIsPressed(binding.ControllerType, binding.ControllerId, binding.ButtonId))
+            if (BindingsHelper.GetIsPressed(binding.ControllerType.Value, binding.ControllerId.Value, binding.ButtonId.Value))
             {
                 _bindingIndexPressed = index;
                 _isPressedHintTimer = Time.time + 1f;
