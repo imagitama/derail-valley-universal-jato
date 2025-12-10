@@ -15,7 +15,7 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     [Draw(Label = "Completely disable derailing")] public bool PreventDerail = false;
     [Draw(Label = "Disable crouching when in train car")] public bool DisableCrouchWhenInTrainCar = true;
     [Draw(Label = "Game must be in focus to activate JATO")] public bool RequireGameFocus = true;
-    public List<BindingInfo> Bindings;
+    public List<BindingInfo> Bindings = [];
 
     public void AddDefaultBindings()
     {
