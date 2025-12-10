@@ -88,9 +88,9 @@ public class UniversalJato : MonoBehaviour
 
         alwaysStuff?.gameObject.SetActive(!settings.HideBody);
 
-        if (Input.GetKey(settings.KeyCode))
+        if (BindingsHelper.GetIsPressed(settings.Binding))
         {
-            if (settings.RequireSittingInside && GetIsSittingInside() != true)
+            if ((settings.RequireSittingInside && GetIsSittingInside() != true) || (Main.settings.RequireGameFocus && !Application.isFocused))
             {
                 // ignore
             }

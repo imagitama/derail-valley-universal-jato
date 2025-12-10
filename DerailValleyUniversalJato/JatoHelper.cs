@@ -8,10 +8,11 @@ using UnityModManagerNet;
 
 namespace DerailValleyUniversalJato;
 
+[Serializable]
 public class JatoSettings
 {
     public float Thrust = 100000f;
-    public KeyCode KeyCode = KeyCode.LeftShift;
+    public BindingInfo Binding;
     public bool ForceOn = false;
     // offsets
     public float PositionX = 0;
@@ -29,7 +30,7 @@ public class JatoSettings
         return new JatoSettings()
         {
             Thrust = Thrust,
-            KeyCode = KeyCode,
+            Binding = Binding,
             ForceOn = ForceOn,
             PositionX = PositionX,
             PositionY = PositionY,
@@ -45,7 +46,7 @@ public class JatoSettings
     }
 }
 
-public static class JatoManager
+public static class JatoHelper
 {
     private static UnityModManager.ModEntry.ModLogger Logger => Main.ModEntry.Logger;
     private static AssetBundle? _rocketAssetBundle;

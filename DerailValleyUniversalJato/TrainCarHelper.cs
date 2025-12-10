@@ -65,7 +65,6 @@ public static class TrainCarHelper
             trainCar.SetTrack(closestTrack, rerailPos, forward);
     }
 
-
     public static void EnableNoDerail()
     {
         var oldVal = Globals.G.GameParams.DerailStressThreshold;
@@ -79,8 +78,6 @@ public static class TrainCarHelper
         Logger.Log($"Disable no-derail ({oldVal}=>{Globals.G.GameParams.defaultStressThreshold})");
         Globals.G.GameParams.DerailStressThreshold = Globals.G.GameParams.defaultStressThreshold;
     }
-
-    public static TrainCarCustomization lastTrainCarCustomization;
 
     public static float? GetForwardSpeed(TrainCar car)
     {

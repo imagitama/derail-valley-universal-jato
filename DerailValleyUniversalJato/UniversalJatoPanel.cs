@@ -2,7 +2,6 @@ using System;
 using UnityEngine;
 using UnityModManagerNet;
 using DerailValleyModToolbar;
-using DV;
 using DV.ThingTypes;
 using System.Linq;
 using System.Collections.Generic;
@@ -46,6 +45,9 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
     private bool _snapping = true;
     // standard values
     private float _standardThrust = 100000f;
+    private float _lastKnownSliderValue = 100000;
+    private string _lastknownTextValue = "";
+    private bool _useStandardThrustSlider = true;
     private float _frontPositionX = 0f;
     private float _frontPositionY = 0f;
     private float _frontPositionZ = 0f;
@@ -107,9 +109,9 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
 
         var (transform, rigidbody, trainCar) = target.Value;
 
-        JatoManager.AddJato(transform, trainCar, rigidbody, new JatoSettings()
+        JatoHelper.AddJato(transform, trainCar, rigidbody, new JatoSettings()
         {
-            KeyCode = KeyCode.LeftShift
+            Binding = Main.settings.Bindings.First(x => x.ActionId == Actions.RearJatoActivate),
         });
 
         _selectedComponentIndex = null;
@@ -123,7 +125,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         if (target == null)
             return;
 
-        JatoManager.RemoveJato(target, jatoIndex);
+        JatoHelper.RemoveJato(target, jatoIndex);
     }
 
     void StopTrainMoving()
@@ -151,7 +153,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
     private void UpdateDebugTexts()
     {
         var target = GetJatoTargetInfo();
-        var comps = JatoManager.GetAllJatos();
+        var comps = JatoHelper.GetAllJatos();
 
         if (target == null || _selectedComponentIndex == null)
         {
@@ -161,7 +163,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
             return;
         }
 
-        var compsOnTarget = JatoManager.GetJatos(target!.Value.transform);
+        var compsOnTarget = JatoHelper.GetJatos(target!.Value.transform);
 
         for (var i = 0; i < compsOnTarget.Count; i++)
         {
@@ -207,14 +209,65 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         GUILayout.Label($"Train Car: {(target != null ?
                 $"{target.Value.trainCar.carType}{(speed != null ? $" ({speed:F1} kph)" : "")}" : "(none)")}"); ;
 
-        if (GUILayout.Button("<b>Basics</b>", GUI.skin.label)) _showBasics = !_showBasics;
+        if (GUILayout.Button($"<b>Basics {(_showBasics ? "▼" : "▶")}</b>", GUI.skin.label)) _showBasics = !_showBasics;
         if (_showBasics) DrawBasics(target != null ? target.Value.transform : null);
 
-        if (GUILayout.Button("<b>Advanced</b>", GUI.skin.label)) _showAdvanced = !_showAdvanced;
+        if (GUILayout.Button($"<b>Advanced {(_showAdvanced ? "▼" : "▶")}</b>", GUI.skin.label)) _showAdvanced = !_showAdvanced;
         if (_showAdvanced) DrawAdvanced(rect);
 
-        if (GUILayout.Button("<b>Settings</b>", GUI.skin.label)) _showSettings = !_showSettings;
+        if (GUILayout.Button($"<b>Settings {(_showSettings ? "▼" : "▶")}</b>", GUI.skin.label)) _showSettings = !_showSettings;
         if (_showSettings) DrawSettings();
+    }
+
+
+    void DrawStandardThrustEditor(Transform? target)
+    {
+        GUILayout.Label($"Thrust (newtons): {_standardThrust}");
+
+        var min = 100000;
+        var max = 1000000;
+        var snapAmount = 10000f;
+        void OnChange() => HydrateStandardJatos(target);
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"100k", GUILayout.Width(40));
+        var newValueRaw = GUILayout.HorizontalSlider(_lastKnownSliderValue, min, max);
+        var newValue = _snapping ? Mathf.Round(newValueRaw / snapAmount) * snapAmount : newValueRaw;
+        GUILayout.Label($"1m", GUILayout.Width(40));
+        var newTextValue = GUILayout.TextField(_lastknownTextValue, GUILayout.Width(80));
+        GUILayout.EndHorizontal();
+
+        if (newValue != _lastKnownSliderValue)
+        {
+            _useStandardThrustSlider = true;
+            _lastKnownSliderValue = newValue;
+        }
+
+        if (newTextValue != _lastknownTextValue)
+        {
+            _useStandardThrustSlider = false;
+            _lastknownTextValue = newTextValue;
+        }
+
+        if (_useStandardThrustSlider)
+        {
+            if (newValue != _standardThrust)
+            {
+                _standardThrust = newValue;
+                OnChange();
+            }
+        }
+        else
+        {
+            if (float.TryParse(_lastknownTextValue, out float num))
+            {
+                if (num != _standardThrust)
+                {
+                    _standardThrust = num;
+                    OnChange();
+                }
+            }
+        }
     }
 
     void DrawBasics(Transform? target)
@@ -223,22 +276,9 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
 
         void OnChange() => HydrateStandardJatos(target);
 
-        GUILayout.Label($"Thrust (newtons): {_standardThrust}");
+        DrawStandardThrustEditor(target);
 
-        GUILayout.BeginHorizontal();
-        GUILayout.Label("10000", GUILayout.Width(40));
-        float thrustStepped = _snapping ? Mathf.Round(_standardThrust / 10000f) * 10000f : _standardThrust;
-        var newThrust = GUILayout.HorizontalSlider(thrustStepped, 10000f, 1000000f);
-        GUILayout.Label("1000000", GUILayout.Width(70));
-        GUILayout.EndHorizontal();
-
-        if (newThrust != _standardThrust)
-        {
-            _standardThrust = newThrust;
-            OnChange();
-        }
-
-        if (GUILayout.Button("Add 2 Rear JATOs (Shift)"))
+        if (GUILayout.Button($"Add 2 Rear JATOs ({Main.settings.Bindings.Find(x => x.ActionId == Actions.RearJatoActivate).ButtonName})"))
         {
             AddStandardRearJatos();
         }
@@ -247,7 +287,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         DrawStandardJatoOffsetSlider("Y", ref _rearPositionY, 0f, 5f, OnChange);
         DrawStandardJatoOffsetSlider("Z", ref _rearPositionZ, -10f, 10f, OnChange);
 
-        if (GUILayout.Button("Add 2 Front JATOs (Ctrl)"))
+        if (GUILayout.Button($"Add 2 Front JATOs ({Main.settings.Bindings.Find(x => x.ActionId == Actions.FrontJatoActivate).ButtonName})"))
         {
             AddStandardFrontJatos();
         }
@@ -297,7 +337,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
             return;
         }
 
-        var jatos = JatoManager.GetJatos(target.Value.transform);
+        var jatos = JatoHelper.GetJatos(target.Value.transform);
 
         var bold = new GUIStyle(GUI.skin.label);
         bold.fontStyle = FontStyle.Bold;
@@ -342,7 +382,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
                     GUILayout.BeginHorizontal();
                     GUILayout.Label($"Thrust: {jato.settings.Thrust}", small, GUILayout.Width(rect.width * 0.3f));
                     GUILayout.Label($"Position: {jato.settings.PositionX:F1}, {jato.settings.PositionY:F1}, {jato.settings.PositionZ:F1}", small, GUILayout.Width(rect.width * 0.3f));
-                    GUILayout.Label($"Key: {jato.settings.KeyCode}", small, GUILayout.Width(rect.width * 0.3f));
+                    GUILayout.Label($"Binding: {jato.settings.Binding}", small, GUILayout.Width(rect.width * 0.3f));
                     GUILayout.EndHorizontal();
 
                     GUILayout.BeginHorizontal();
@@ -493,16 +533,16 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         if (target == null)
             return;
 
-        var existingJato = JatoManager.GetJatos(target.Value.transform)[jatoIndex];
+        var existingJato = JatoHelper.GetJatos(target.Value.transform)[jatoIndex];
 
         if (existingJato == null)
-            throw new Exception($"Could not find jato at index {jatoIndex} on transform {target.Value.transform} (count: {JatoManager.GetJatoCount(target.Value.transform)})");
+            throw new Exception($"Could not find jato at index {jatoIndex} on transform {target.Value.transform} (count: {JatoHelper.GetJatoCount(target.Value.transform)})");
 
         var newSettings = existingJato.settings.Clone();
         newSettings.PositionX *= -1;
         newSettings.RotationY *= -1;
 
-        JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, newSettings);
+        JatoHelper.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, newSettings);
     }
 
     void AddBasicJato()
@@ -516,49 +556,15 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
 
         var newSettings = new JatoSettings();
 
-        JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, newSettings);
+        JatoHelper.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, newSettings);
     }
-
-    private bool _showKeys;
-    private KeyCode[] _allKeys = (KeyCode[])Enum.GetValues(typeof(KeyCode));
 
     void DrawJatoKeybindingEditor(int jatoIndex, UniversalJato jato)
     {
         if (_settingsEditingDraft == null)
             return;
 
-        GUILayout.BeginHorizontal();
-        GUILayout.Label("Key:");
-
-        if (GUILayout.Button(_settingsEditingDraft.KeyCode.ToString(), GUILayout.Width(100)))
-            _showKeys = !_showKeys;
-
-        GUILayout.EndHorizontal();
-
-        if (_showKeys)
-        {
-            int columns = 4;
-            int count = 0;
-
-            GUILayout.BeginHorizontal();
-            foreach (var k in _allKeys)
-            {
-                if (GUILayout.Button(k.ToString(), GUILayout.Width(100)))
-                {
-                    _settingsEditingDraft.KeyCode = k;
-                    _showKeys = false;
-                    HydrateJato(jatoIndex, jato);
-                }
-
-                count++;
-                if (count % columns == 0)
-                {
-                    GUILayout.EndHorizontal();
-                    GUILayout.BeginHorizontal();
-                }
-            }
-            GUILayout.EndHorizontal();
-        }
+        BindingsHelperUI.DrawBinding(_settingsEditingDraft.Binding, OnUpdated: () => HydrateJato(jatoIndex, jato));
     }
 
     void DrawJatoThrustEditor(int jatoIndex, UniversalJato jato)
@@ -644,7 +650,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         if (_settingsEditingDraft == null)
             return;
 
-        JatoManager.UpdateJato(jato, _settingsEditingDraft);
+        JatoHelper.UpdateJato(jato, _settingsEditingDraft);
     }
 
     void DrawJatoVolumeSlider(int jatoIndex, UniversalJato jato)
@@ -735,7 +741,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
 
         // TODO: move to manager
 
-        var jatos = JatoManager.GetJatos(target);
+        var jatos = JatoHelper.GetJatos(target);
 
         var standardJatos = jatos.Where(x => x.side != null);
 
@@ -769,7 +775,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
                     break;
             }
 
-            JatoManager.ApplyOffsetsToRocket(jato.transform, jato.settings);
+            JatoHelper.ApplyOffsetsToRocket(jato.transform, jato.settings);
         }
     }
 
@@ -792,7 +798,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         var settingsRight = new JatoSettings()
         {
             Thrust = _standardThrust,
-            KeyCode = KeyCode.LeftShift,
+            Binding = Main.settings.Bindings.First(x => x.ActionId == Actions.RearJatoActivate),
             PositionX = position.Value.x,
             PositionY = position.Value.y,
             PositionZ = position.Value.z
@@ -802,19 +808,19 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         _rearPositionY = settingsRight.PositionY;
         _rearPositionZ = settingsRight.PositionZ;
 
-        var addedComponentRight = JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsRight);
+        var addedComponentRight = JatoHelper.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsRight);
         addedComponentRight.side = StandardSide.RearRight;
 
         var settingsLeft = new JatoSettings()
         {
             Thrust = _standardThrust,
-            KeyCode = KeyCode.LeftShift,
+            Binding = Main.settings.Bindings.First(x => x.ActionId == Actions.RearJatoActivate),
             PositionX = position.Value.x * -1,
             PositionY = position.Value.y,
             PositionZ = position.Value.z
         };
 
-        var addedComponentLeft = JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsLeft);
+        var addedComponentLeft = JatoHelper.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsLeft);
         addedComponentLeft.side = StandardSide.RearLeft;
     }
 
@@ -837,7 +843,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         var settingsRight = new JatoSettings()
         {
             Thrust = _standardThrust,
-            KeyCode = KeyCode.LeftControl,
+            Binding = Main.settings.Bindings.First(x => x.ActionId == Actions.FrontJatoActivate),
             PositionX = position.Value.x,
             PositionY = position.Value.y,
             PositionZ = position.Value.z,
@@ -848,20 +854,20 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         _frontPositionY = settingsRight.PositionY;
         _frontPositionZ = settingsRight.PositionZ;
 
-        var addedComponentRight = JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsRight);
+        var addedComponentRight = JatoHelper.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsRight);
         addedComponentRight.side = StandardSide.FrontRight;
 
         var settingsLeft = new JatoSettings()
         {
             Thrust = _standardThrust,
-            KeyCode = KeyCode.LeftControl,
+            Binding = Main.settings.Bindings.First(x => x.ActionId == Actions.FrontJatoActivate),
             PositionX = position.Value.x * -1,
             PositionY = position.Value.y,
             PositionZ = position.Value.z,
             RotationX = 180
         };
 
-        var addedComponentLeft = JatoManager.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsLeft);
+        var addedComponentLeft = JatoHelper.AddJato(target.Value.transform, target.Value.trainCar, target.Value.rigidbody, settingsLeft);
         addedComponentLeft.side = StandardSide.FrontLeft;
     }
 
@@ -873,13 +879,13 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         if (target == null)
             return;
 
-        JatoManager.RemoveAllJatos(target.Value.transform);
+        JatoHelper.RemoveAllJatos(target.Value.transform);
     }
 
     public void RemoveAllJatosFromAllTrains()
     {
         Logger.Log("[Panel] Removing all jatos from ALL...");
 
-        JatoManager.RemoveAllJatos();
+        JatoHelper.RemoveAllJatos();
     }
 }

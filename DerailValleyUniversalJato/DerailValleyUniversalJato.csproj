@@ -16,14 +16,14 @@
 		<Reference Include="Assembly-CSharp" />
 		<Reference Include="DV.Utils" />
 		<Reference Include="DV.ThingTypes" />
-		<Reference Include="DV.LayeredAudio" />
-		<Reference Include="DV.NAudio" />
 		<Reference Include="DV.RailTrack" />
 		<Reference Include="DV.PointSet" />
 		<Reference Include="DV.CharacterController" />
 		<Reference Include="DV.BrakeSystem" />
 		<Reference Include="net.smkd.vector3d" />
 		<Reference Include="WorldStreamer" />
+		<Reference Include="DV.Interaction" />
+		<Reference Include="Rewired_Core" />
 	</ItemGroup>
 
 	<!-- Unity -->

@@ -4,6 +4,7 @@ using HarmonyLib;
 using UnityModManagerNet;
 using UnityEngine;
 using DerailValleyModToolbar;
+using System.Collections.Generic;
 
 namespace DerailValleyUniversalJato;
 
@@ -22,25 +23,37 @@ public static class Main
         Harmony? harmony = null;
         try
         {
-            settings = Settings.Load<Settings>(modEntry);
-            modEntry.OnGUI = OnGUI;
-            modEntry.OnSaveGUI = OnSaveGUI;
+            BindingsHelper.OnReady += () =>
+            {
+                settings = Settings.Load<Settings>(modEntry);
+                settings.AddDefaultBindings();
 
-            harmony = new Harmony(modEntry.Info.Id);
-            harmony.PatchAll(Assembly.GetExecutingAssembly());
+                modEntry.OnGUI = OnGUI;
+                modEntry.OnSaveGUI = OnSaveGUI;
 
-            ModToolbarAPI
-                .Register(modEntry)
-                .AddPanelControl(
-                    label: "Universal JATO",
-                    icon: "icon.png",
-                    tooltip: "Configure Universal JATO",
-                    type: typeof(UniversalJatoPanel),
-                    title: "Universal JATO",
-                    width: 400)
-                .Finish();
+                harmony = new Harmony(modEntry.Info.Id);
+                harmony.PatchAll(Assembly.GetExecutingAssembly());
 
-            ModEntry.Logger.Log("DerailValleyUniversalJato started");
+                ModToolbarAPI
+                    .Register(modEntry)
+                    .AddPanelControl(
+                        label: "Universal JATO",
+                        icon: "icon.png",
+                        tooltip: "Configure Universal JATO",
+                        type: typeof(UniversalJatoPanel),
+                        title: "Universal JATO",
+                        width: 400)
+                    // .AddPanelControl(
+                    //     label: "JATO Bindings",
+                    //     icon: "binding-icon.png",
+                    //     tooltip: "Configure JATO Bindings",
+                    //     type: typeof(BindingPanel),
+                    //     title: "JATO Bindings",
+                    //     width: 400)
+                    .Finish();
+
+                ModEntry.Logger.Log("DerailValleyUniversalJato started");
+            };
         }
         catch (Exception ex)
         {
@@ -56,6 +69,7 @@ public static class Main
     static void OnGUI(UnityModManager.ModEntry modEntry)
     {
         settings.Draw(modEntry);
+        BindingsHelperUI.DrawBindings(settings.Bindings);
     }
 
     static void OnSaveGUI(UnityModManager.ModEntry modEntry)
@@ -67,7 +81,7 @@ public static class Main
     {
         ModToolbarAPI.Unregister(modEntry);
 
-        JatoManager.Unload();
+        JatoHelper.Unload();
 
         ModEntry.Logger.Log("DerailValleyUniversalJato stopped");
         return true;

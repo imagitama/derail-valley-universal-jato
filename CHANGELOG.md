@@ -1,3 +1,8 @@
+# 1.3.0
+
+- rebind default controls in settings
+- add override thrust textbox
+
 # 1.2.2
 
 - fixed crash on some train cars
