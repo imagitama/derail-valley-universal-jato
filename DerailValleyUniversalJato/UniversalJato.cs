@@ -76,9 +76,14 @@ public class UniversalJato : MonoBehaviour
         return PlayerManager.Car == trainCar;
     }
 
+    float lastPressTime = -1f;
+    bool lastWasPressed = false;
+    bool IsForcedOn;
+
     void Update()
     {
         var originallyIsOn = IsOn;
+        float now = Time.time;
 
         if (settings == null)
         {
@@ -87,24 +92,47 @@ public class UniversalJato : MonoBehaviour
         }
 
         alwaysStuff?.gameObject.SetActive(!settings.HideBody);
+        bool isPressed = BindingsHelper.GetIsPressed(settings.Binding);
 
-        if (BindingsHelper.GetIsPressed(settings.Binding))
+        if (isPressed)
         {
-            if ((settings.RequireSittingInside && GetIsSittingInside() != true) || (Main.settings.RequireGameFocus && !Application.isFocused))
+            if (!lastWasPressed)
             {
-                // ignore
+                float gap = now - lastPressTime;
+
+                if (IsForcedOn)
+                {
+                    IsForcedOn = false;
+                }
+                else if (Main.settings.DoublePressTimer > 0 && gap <= Main.settings.DoublePressTimer)
+                {
+                    IsForcedOn = true;
+                }
+                else
+                {
+                    IsOn = true;
+                }
+
+                lastPressTime = now;
             }
             else
             {
-                IsOn = true;
+                if (!IsForcedOn)
+                    IsOn = true;
             }
         }
         else
         {
-            IsOn = false;
+            if (!IsForcedOn)
+                IsOn = false;
         }
 
+        lastWasPressed = isPressed;
+
         if (settings.ForceOn)
+            IsOn = true;
+
+        if (IsForcedOn)
             IsOn = true;
 
         offStuff?.gameObject.SetActive(IsOn!);

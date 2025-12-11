@@ -278,6 +278,8 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
 
         DrawStandardThrustEditor(target);
 
+        GUILayout.Label("Double press to toggle");
+
         if (GUILayout.Button($"Add 2 Rear JATOs ({Main.settings.Bindings.Find(x => x.ActionId == Actions.RearJatoActivate).ButtonName})"))
         {
             AddStandardRearJatos();
@@ -717,7 +719,7 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         GUI.enabled = true;
         GUILayout.EndHorizontal();
 
-        if (GUILayout.Button("Remove ALL JATOs"))
+        if (GUILayout.Button("Remove All JATOs From All Trains"))
         {
             RemoveAllJatosFromAllTrains();
         }
@@ -765,8 +767,6 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
                     jato.settings.PositionZ = _frontPositionZ;
                     break;
                 case StandardSide.RearLeft:
-                    Logger.Log($"REAR LEFT {jato.settings.PositionX} => {_rearPositionX * -1}");
-
                     jato.settings.PositionX = _rearPositionX * -1;
                     jato.settings.PositionY = _rearPositionY;
                     jato.settings.PositionZ = _rearPositionZ;

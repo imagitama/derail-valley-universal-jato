@@ -1,3 +1,7 @@
+# 1.4.0
+
+- double press to force on
+
 # 1.3.2
 
 - fixed button not showing up
