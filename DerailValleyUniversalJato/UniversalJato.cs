@@ -106,7 +106,13 @@ public class UniversalJato : MonoBehaviour
                 }
                 else if (Main.settings.DoublePressTimer > 0 && gap <= Main.settings.DoublePressTimer)
                 {
-                    IsForcedOn = true;
+                    if (Main.settings.RequireGameFocus == true && Application.isFocused == false)
+                    {
+                    }
+                    else
+                    {
+                        IsForcedOn = true;
+                    }
                 }
                 else
                 {
@@ -128,6 +134,12 @@ public class UniversalJato : MonoBehaviour
         }
 
         lastWasPressed = isPressed;
+
+        if (Main.settings.RequireGameFocus == true && Application.isFocused == false)
+            IsOn = false;
+
+        if (settings.RequireSittingInside && PlayerManager.Car != trainCar)
+            IsOn = false;
 
         if (settings.ForceOn)
             IsOn = true;
