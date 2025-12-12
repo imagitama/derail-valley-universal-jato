@@ -5,6 +5,7 @@ using DerailValleyModToolbar;
 using DV.ThingTypes;
 using System.Linq;
 using System.Collections.Generic;
+using Rewired;
 
 namespace DerailValleyUniversalJato;
 
@@ -199,6 +200,8 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         return null;
     }
 
+    private bool _showPresets = false;
+
     public void Window(Rect rect)
     {
         UpdateDebugTexts();
@@ -215,10 +218,91 @@ public class UniversalJatoPanel : MonoBehaviour, IModToolbarPanel
         if (GUILayout.Button($"<b>Advanced {(_showAdvanced ? "▼" : "▶")}</b>", GUI.skin.label)) _showAdvanced = !_showAdvanced;
         if (_showAdvanced) DrawAdvanced(rect);
 
+        if (GUILayout.Button($"<b>Presets {(_showPresets ? "▼" : "▶")}</b>", GUI.skin.label)) _showPresets = !_showPresets;
+        if (_showPresets) DrawPresets(rect);
+
         if (GUILayout.Button($"<b>Settings {(_showSettings ? "▼" : "▶")}</b>", GUI.skin.label)) _showSettings = !_showSettings;
         if (_showSettings) DrawSettings();
     }
 
+    private string _newPresetName = "";
+
+    void DrawPresets(Rect rect)
+    {
+        foreach (var preset in Main.settings.Presets)
+            DrawPreset(preset);
+
+        GUILayout.BeginHorizontal();
+        _newPresetName = GUILayout.TextField(_newPresetName);
+        if (GUILayout.Button("Add Preset", GUILayout.Width(100)))
+            AddPreset();
+        GUILayout.EndHorizontal();
+    }
+
+    void DrawPreset(JatoPreset preset)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"Preset: {preset.Name} ({preset.CarName}, {preset.Jatos.Count}x)");
+
+        if (GUILayout.Button("Apply", GUILayout.Width(70)))
+            ApplyPreset(preset);
+
+        if (GUILayout.Button("Delete", GUILayout.Width(70)))
+            DeletePreset(preset);
+
+        GUILayout.EndHorizontal();
+    }
+
+    void AddPreset()
+    {
+        if (String.IsNullOrEmpty(_newPresetName))
+            return;
+
+        var target = GetJatoTargetInfo();
+
+        var preset = new JatoPreset()
+        {
+            Name = _newPresetName,
+            CarName = PlayerManager.Car.carType.ToString(),
+            Jatos = JatoHelper.GetJatos(target.Value.transform).Select(x => x.settings).ToList()
+        };
+
+        Main.settings.Presets.Add(preset);
+        Main.settings.Save(Main.ModEntry);
+    }
+
+    // TODO: re-use with AddJato()
+    void AddJatoViaPreset(JatoSettings jato)
+    {
+        Logger.Log($"[Panel] Add jato via preset jato={jato}");
+
+        var target = GetJatoTargetInfo();
+        if (target == null)
+            return;
+
+        var (transform, rigidbody, trainCar) = target.Value;
+
+        JatoHelper.AddJato(transform, trainCar, rigidbody, jato);
+
+        _selectedComponentIndex = null;
+    }
+
+
+    void ApplyPreset(JatoPreset preset)
+    {
+        Logger.Log($"[Panel] Add preset={preset}");
+
+        foreach (var jato in preset.Jatos)
+            AddJatoViaPreset(jato);
+    }
+
+    void DeletePreset(JatoPreset preset)
+    {
+        Logger.Log($"[Panel] Delete preset={preset}");
+
+        Main.settings.Presets.Remove(preset);
+        Main.settings.Save(Main.ModEntry);
+    }
 
     void DrawStandardThrustEditor(Transform? target)
     {

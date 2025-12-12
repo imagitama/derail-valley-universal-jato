@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityModManagerNet;
@@ -10,6 +11,14 @@ public static class Actions
     public static int FrontJatoActivate = 151;
 }
 
+[Serializable]
+public class JatoPreset
+{
+    public string Name;
+    public string CarName;
+    public List<JatoSettings> Jatos;
+}
+
 public class Settings : UnityModManager.ModSettings, IDrawable
 {
     [Draw(Label = "Completely disable derailing")] public bool PreventDerail = false;
@@ -17,6 +26,7 @@ public class Settings : UnityModManager.ModSettings, IDrawable
     [Draw(Label = "Game must be in focus to activate JATO")] public bool RequireGameFocus = true;
     [Draw(Label = "Gap between double-presses (0 to disable)")] public float DoublePressTimer = 0.3f;
     public List<BindingInfo> Bindings = [];
+    public List<JatoPreset> Presets = [];
 
     public void AddDefaultBindings()
     {
