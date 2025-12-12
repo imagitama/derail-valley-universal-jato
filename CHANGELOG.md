@@ -1,3 +1,9 @@
+# 1.5.0
+
+- presets!
+- fix JATOs firing when not in car
+- fix JATOs working when not in focus
+
 # 1.4.0
 
 - double press to force on
